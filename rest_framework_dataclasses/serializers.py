@@ -60,9 +60,33 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         self.dataclass = kwargs.pop('dataclass', None)
         super(DataclassSerializer, self).__init__(*args, **kwargs)
 
+    # Utility functions
+
+    def get_dataclass_type(self):
+        if self.dataclass:
+            assert not hasattr(self, 'Meta'), (
+                "Class '{serializer_class}' may not have `Meta` attribute when instantiated with `dataclass` parameter."
+                .format(serializer_class=self.__class__.__name__)
+            )
+
+            return self.dataclass
+        else:
+            assert hasattr(self, 'Meta'), (
+                "Class '{serializer_class}' missing `Meta` attribute."
+                .format(serializer_class=self.__class__.__name__)
+            )
+            assert hasattr(self.Meta, 'dataclass'), (
+                "Class '{serializer_class}' missing `Meta.dataclass` attribute."
+                .format(serializer_class=self.__class__.__name__)
+            )
+
+            return self.Meta.dataclass
+
     # Default `create` and `update` behavior...
+
     def create(self, validated_data):
-        return self.Meta.dataclass(**validated_data)
+        dataclass_type = self.get_dataclass_type()
+        return dataclass_type(**validated_data)
 
     def update(self, instance, validated_data):
         for attr, value in validated_data.items():
@@ -77,27 +101,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         Return the dict of field names -> field instances that should be used for `self.fields` when instantiating the
         serializer.
         """
-        # Get and verify class configuration
-        if self.dataclass:
-            assert not hasattr(self, 'Meta'), (
-                "Class '{serializer_class}' may not have `Meta` attribute when instantiated with `dataclass` parameter."
-                .format(serializer_class=self.__class__.__name__)
-            )
-
-            dataclass_type = self.dataclass
-        else:
-            assert hasattr(self, 'Meta'), (
-                "Class '{serializer_class}' missing `Meta` attribute."
-                .format(serializer_class=self.__class__.__name__)
-            )
-            assert hasattr(self.Meta, 'dataclass'), (
-                "Class '{serializer_class}' missing `Meta.dataclass` attribute."
-                .format(serializer_class=self.__class__.__name__)
-            )
-
-            dataclass_type = self.Meta.dataclass
-
         # Make sure we're dealing with an actual dataclass.
+        dataclass_type = self.get_dataclass_type()
         if not dataclasses.is_dataclass(dataclass_type):
             raise ValueError(
                 "Class '{serializer_class}' can only be used to serialize dataclasses."
@@ -271,12 +276,12 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
             field_kwargs = self.include_extra_kwargs(field_kwargs, extra_child_field_kwargs)
             child_field = field_class(**field_kwargs)
 
+            # allow_empty was only added for DictField in 3.10, but it defaults to True anyway, so don't bother.
+            field_kwargs = {'child': child_field}
             if field_info.is_mapping:
                 field_class = rest_framework.fields.DictField
-                field_kwargs = {'child': child_field}  # allow_empty added in (I guess) 3.10
             elif field_info:
                 field_class = rest_framework.fields.ListField
-                field_kwargs = {'child': child_field, 'allow_empty': True}
 
         return field_class, field_kwargs
 
