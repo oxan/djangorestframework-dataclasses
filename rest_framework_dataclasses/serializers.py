@@ -236,8 +236,6 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         """
         if field_name in definition.fields:
             field_info = field_utils.get_field_info(definition, field_name)
-            print(field_info.type)
-            print(type(field_info.type))
             if dataclasses.is_dataclass(field_info.type):
                 return self.build_nested_field(definition, field_info)
             elif isinstance(field_info.type, type):
@@ -398,20 +396,6 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
             )
 
         return extra_kwargs
-
-    # Determine the validators to apply...
-
-    def get_validators(self):
-        """
-        Determine the set of validators to use when instantiating serializer.
-        """
-        # If the validators have been declared explicitly then use that.
-        validators = getattr(getattr(self, 'Meta', None), 'validators', None)
-        if validators is not None:
-            return list(validators)
-
-        # Otherwise use the default set of validators, which is empty.
-        return ()
 
 
 class HyperlinkedDataclassSerializer(DataclassSerializer):
