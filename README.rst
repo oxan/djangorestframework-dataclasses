@@ -202,7 +202,7 @@ Advanced usage
 --------------
 
 * The output of methods or properties on the dataclass can be included as a (read-only) field in the serialized state
-  by adding their name to the `fields` option in the `Meta` class.
+  by adding their name to the ``fields`` option in the ``Meta`` class.
 
 * If you don't need to customize the generated fields, ``DataclassSerializer`` can also be used directly without
   creating a subclass. In that case, the dataclass should be specified using the ``dataclass`` constructor parameter:
@@ -218,7 +218,7 @@ So far, field generation is supported for the following types and their subclass
 
 * ``str``, ``bool``, ``int`` and ``float``.
 * ``date``, ``datetime``, ``time`` and ``timedelta`` from the ``datetime`` package.
-* ``decimal.Decimal`` (requires specifying ``max_digits` and ``decimal_places`` through `extra_kwargs`).
+* ``decimal.Decimal`` (requires specifying ``max_digits`` and ``decimal_places`` through ``extra_kwargs``).
 * ``typing.Iterable`` (including ``typing.List``).
 * ``typing.Mapping`` (including ``typing.Dict``).
 * ``django.db.Model``
@@ -226,16 +226,16 @@ So far, field generation is supported for the following types and their subclass
 For advanced users, the ``DataclassSerializer`` also exposes an API that you can override in order to alter how
 serializer fields are generated:
 
-* The `serializer_field_mapping` property contains a dictionary that maps types to REST framework serializer classes.
+* The ``serializer_field_mapping`` property contains a dictionary that maps types to REST framework serializer classes.
   You can override or extend this mapping to change the serializer field classes that are used for fields based on
   their type.
 
-* The `serializer_related_field` is the serializer field class that is used for relations to models.
+* The ``serializer_related_field`` is the serializer field class that is used for relations to models.
 
-* The `build_unknown_typed_field()` method is called to create serializer field classes for types that it does not
+* The ``build_unknown_typed_field()`` method is called to create serializer field classes for types that it does not
   understand. By default this throws an error, but you can extend this with custom logic to create serializer fields.
 
-* The `build_standard_field()`, `build_relational_field()`, `build_nested_field()` and `build_property_field()` methods
-  are used to process respectively fields, embedded models, embedded dataclasses and properties. These can be
+* The ``build_standard_field()``, ``build_relational_field()``, ``build_nested_field()`` and ``build_property_field()``
+  methods are used to process respectively fields, embedded models, embedded dataclasses and properties. These can be
   overridden to change the field generation logic, but at that point it's usually a better idea to just declare the
   field explicitly.
