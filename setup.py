@@ -11,7 +11,7 @@ setup(
     description='A dataclasses serializer for Django REST Framework',
     long_description=long_description,
     long_description_content_type='text/x-rst',
-    url='https://github.com/oxan/django-rest-framework-dataclasses',
+    url='https://github.com/oxan/djangorestframework-dataclasses',
     author='Oxan van Leeuwen',
     author_email='oxan@oxanvanleeuwen.nl',
     license='BSD',
