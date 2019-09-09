@@ -128,6 +128,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
                 continue
 
             extra_field_kwargs = extra_kwargs.get(field_name, {})
+
+            # Get the source field (this can be useful to represent a single dataclass field in multiple ways in the
+            # serialization state).
             source = extra_field_kwargs.get('source', '*')
             if source == '*':
                 source = field_name
