@@ -248,18 +248,26 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 
         return self.build_unknown_field(definition, field_name)
 
-    def build_standard_field_recurse(self, type_info: TypeInfo, extra_kwargs_for_field: KWArgs) \
-            -> SerializerFieldDefinition:
+    def build_standard_field(self, definition: DataclassDefinition, field_name: str, type_info: TypeInfo,
+                             extra_kwargs_for_field: KWArgs = None) -> SerializerFieldDefinition:
+        """
+        Create regular dataclass fields.
+        """
+        if extra_kwargs_for_field is None:
+            # For nested fields, we allow extra kwargs to be passed to fields at any level by including them in the
+            # `child_kwargs` field in the parents field extra kwargs. Since we need to instantiate child fields here
+            # directly, extract the whole kwargs tree on the outer-most invocation where it's not supplied.
+            extra_kwargs = self.get_extra_kwargs()
+            extra_kwargs_for_field = extra_kwargs.get(field_name, {})
+
         if type_info.is_mapping or type_info.is_many:
-            # For composite types, recurse to build the child field (i.e. the field of very instance). Allow extra
-            # kwargs to be specified for the child field by including them in the `child_kwargs` field in the extra
-            # kwargs of the parent field.
-            # Note that include_extra_kwargs() isn't called here on purpose, as it's called on method exit and as such
-            # the extra kwargs are already included in the `child_field_kwargs` value.
+            # For composite types, recurse to build the child field (i.e. the field of very instance). We pass the extra
+            # kwargs that are specified for the child field through, as we include them in the returned value on method
+            # exit by calling `include_extra_kwargs()`.
             base_type_info = field_utils.get_type_info(type_info.base_type)
             extra_child_field_kwargs = extra_kwargs_for_field.get('child_kwargs', {})
-            child_field_class, child_field_kwargs = self.build_standard_field_recurse(base_type_info,
-                                                                                      extra_child_field_kwargs)
+            child_field_class, child_field_kwargs = self.build_standard_field(definition, field_name, base_type_info,
+                                                                              extra_child_field_kwargs)
 
             # Create child field and initialize parent field kwargs
             child_field = child_field_class(**child_field_kwargs)
@@ -274,33 +282,18 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
                 field_class = field_utils.lookup_type_in_mapping(self.serializer_field_mapping, type_info.base_type)
                 field_kwargs = {'allow_null': type_info.is_optional}
             except KeyError:
-                # When resolving the type hint fails, we want a nice error message including the complete type
-                # definition of the field, but that might not be available when we're called recursively. Instead raise
-                # a generic NotImplementedError, which is caught at the top-level and gains a nice error message there.
-                raise NotImplementedError()
+                # When resolving the type hint fails, raise a nice descriptive error.
+                field_type = definition.field_types[field_name]
+                raise NotImplementedError(
+                    "Automatic serializer field deduction not supported for field '{field}' on '{dataclass}' "
+                    "of type '{type}'."
+                    .format(dataclass=definition.dataclass_type.__name__, field=field_name, type=field_type)
+                )
 
-        # Also include the extra kwargs for the field here. For the top-level field this is done after build_field(),
-        # but we might be called recursively for nested dictionaries and the like, where we want the ability to specify
-        # kwargs at any level.
+        # Also include the extra kwargs for the field here. For the top-level field this is already done after
+        # build_field(), but we might be called recursively, where the field is initialized directly.
         field_kwargs = self.include_extra_kwargs(field_kwargs, extra_kwargs_for_field)
-
         return field_class, field_kwargs
-
-    def build_standard_field(self, definition: DataclassDefinition, field_name: str, type_info: TypeInfo) \
-            -> SerializerFieldDefinition:
-        """
-        Create regular dataclass fields.
-        """
-        try:
-            # For nested fields, we allow extra kwargs to be passed to fields at any level by including them in the
-            # `child_kwargs` field in the parents field extra kwargs. For this to function, we need access to the whole
-            # extra kwargs tree while building fields, so extract it here as well.
-            extra_kwargs = self.get_extra_kwargs()
-            extra_kwargs_for_field = extra_kwargs.get(field_name, {})
-            return self.build_standard_field_recurse(type_info, extra_kwargs_for_field)
-        except NotImplementedError:
-            # When resolving the type hint fails, fallback to the unknown type error.
-            return self.build_unknown_typed_field(definition, field_name, type_info)
 
     def build_relational_field(self, definition: DataclassDefinition, field_name: str, type_info: TypeInfo) \
             -> SerializerFieldDefinition:
@@ -328,18 +321,6 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
                         'allow_null': type_info.is_optional}
 
         return field_class, field_kwargs
-
-    def build_unknown_typed_field(self, definition: DataclassDefinition, field_name: str, type_info: TypeInfo) \
-            -> NoReturn:
-        """
-        Raise an error on any fields with unknown types.
-        """
-        field_type = definition.field_types[field_name]
-        raise NotImplementedError(
-            "Automatic serializer field deduction not supported for field '{field}' on '{dataclass}' "
-            "of type '{type}'."
-            .format(dataclass=definition.dataclass_type.__name__, field=field_name, type=field_type)
-        )
 
     def build_property_field(self, definition: DataclassDefinition, field_name: str) -> SerializerFieldDefinition:
         """
