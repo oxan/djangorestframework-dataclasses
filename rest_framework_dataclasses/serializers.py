@@ -3,7 +3,7 @@ import dataclasses
 import datetime
 import decimal
 from collections import OrderedDict
-from typing import List, Type, Dict, Any, Tuple, Mapping
+from typing import List, Type, Dict, Any, Tuple, Mapping, NoReturn
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model
@@ -13,7 +13,7 @@ from rest_framework.relations import PrimaryKeyRelatedField, HyperlinkedRelatedF
 from rest_framework.utils.field_mapping import get_relation_kwargs
 
 from rest_framework_dataclasses import field_utils
-from rest_framework_dataclasses.field_utils import DataclassDefinition, get_dataclass_definition, FieldInfo, TypeInfo
+from rest_framework_dataclasses.field_utils import DataclassDefinition, get_dataclass_definition, TypeInfo
 
 
 # Define some types to make type hinting more readable
@@ -235,15 +235,15 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         Return a two tuple of (cls, kwargs) to build a serializer field with.
         """
         if field_name in definition.fields:
-            field_info = field_utils.get_field_info(definition, field_name)
-            if dataclasses.is_dataclass(field_info.type):
-                return self.build_nested_field(definition, field_info)
-            elif isinstance(field_info.type, type) and issubclass(field_info.type, Model):
-                return self.build_relational_field(definition, field_info)
+            type_info = field_utils.get_type_info(definition.field_types[field_name])
+            if dataclasses.is_dataclass(type_info.base_type):
+                return self.build_nested_field(definition, field_name, type_info)
+            elif isinstance(type_info.base_type, type) and issubclass(type_info.base_type, Model):
+                return self.build_relational_field(definition, field_name, type_info)
             else:
-                return self.build_standard_field(definition, field_info)
+                return self.build_standard_field(definition, field_name, type_info)
 
-        elif hasattr(definition.type, field_name):
+        elif hasattr(definition.dataclass_type, field_name):
             return self.build_property_field(definition, field_name)
 
         return self.build_unknown_field(definition, field_name)
@@ -286,7 +286,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 
         return field_class, field_kwargs
 
-    def build_standard_field(self, definition: DataclassDefinition, field_info: FieldInfo) -> SerializerFieldDefinition:
+    def build_standard_field(self, definition: DataclassDefinition, field_name: str, type_info: TypeInfo) \
+            -> SerializerFieldDefinition:
         """
         Create regular dataclass fields.
         """
@@ -295,22 +296,20 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
             # `child_kwargs` field in the parents field extra kwargs. For this to function, we need access to the whole
             # extra kwargs tree while building fields, so extract it here as well.
             extra_kwargs = self.get_extra_kwargs()
-            extra_kwargs_for_field = extra_kwargs.get(field_info.name, {})
-
-            type_info = TypeInfo(field_info.is_mapping, field_info.is_many, field_info.is_optional, field_info.type)
+            extra_kwargs_for_field = extra_kwargs.get(field_name, {})
             return self.build_standard_field_recurse(type_info, extra_kwargs_for_field)
         except NotImplementedError:
             # When resolving the type hint fails, fallback to the unknown type error.
-            return self.build_unknown_typed_field(definition, field_info)
+            return self.build_unknown_typed_field(definition, field_name, type_info)
 
-    def build_relational_field(self, definition: DataclassDefinition, field_info: FieldInfo) \
+    def build_relational_field(self, definition: DataclassDefinition, field_name: str, type_info: TypeInfo) \
             -> SerializerFieldDefinition:
         """
         Create fields for models.
         """
-        relation_info = field_utils.get_relation_info(definition, field_info)
+        relation_info = field_utils.get_relation_info(definition, type_info)
         field_class = self.serializer_related_field
-        field_kwargs = get_relation_kwargs(field_info.name, relation_info)
+        field_kwargs = get_relation_kwargs(field_name, relation_info)
 
         # `view_name` is only valid for hyperlinked relationships.
         if not issubclass(field_class, HyperlinkedRelatedField):
@@ -318,24 +317,28 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 
         return field_class, field_kwargs
 
-    def build_nested_field(self, definition: DataclassDefinition, field_info: FieldInfo) -> SerializerFieldDefinition:
+    def build_nested_field(self, definition: DataclassDefinition, field_name: str, type_info: TypeInfo) \
+            -> SerializerFieldDefinition:
         """
         Create fields for dataclasses.
         """
         field_class = DataclassSerializer
-        field_kwargs = {'dataclass': field_info.type, 'many': field_info.is_many, 'allow_null': field_info.is_optional}
+        field_kwargs = {'dataclass': type_info.base_type,
+                        'many': type_info.is_many,
+                        'allow_null': type_info.is_optional}
 
         return field_class, field_kwargs
 
-    def build_unknown_typed_field(self, definition: DataclassDefinition, field_info: FieldInfo) \
-            -> SerializerFieldDefinition:
+    def build_unknown_typed_field(self, definition: DataclassDefinition, field_name: str, type_info: TypeInfo) \
+            -> NoReturn:
         """
         Raise an error on any fields with unknown types.
         """
+        field_type = definition.field_types[field_name]
         raise NotImplementedError(
             "Automatic serializer field deduction not supported for field '{field}' on '{dataclass}' "
             "of type '{type}'."
-            .format(dataclass=definition.type.__name__, field=field_info.name, type=field_info.type)
+            .format(dataclass=definition.dataclass_type.__name__, field=field_name, type=field_type)
         )
 
     def build_property_field(self, definition: DataclassDefinition, field_name: str) -> SerializerFieldDefinition:
@@ -353,7 +356,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         """
         raise ImproperlyConfigured(
             "Field name '{field_name}' is not valid for dataclass '{class_name}'."
-            .format(field_name=field_name, class_name=definition.type.__name__)
+            .format(field_name=field_name, class_name=definition.dataclass_type.__name__)
         )
 
     def include_extra_kwargs(self, kwargs: KWArgs, extra_kwargs: KWArgs) -> KWArgs:
@@ -418,11 +421,14 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 class HyperlinkedDataclassSerializer(DataclassSerializer):
     serializer_related_field = HyperlinkedRelatedField
 
-    def build_nested_field(self, definition: DataclassDefinition, field_info: FieldInfo) -> SerializerFieldDefinition:
+    def build_nested_field(self, definition: DataclassDefinition, field_name: str, type_info: TypeInfo) \
+            -> SerializerFieldDefinition:
         """
         Create fields for dataclasses.
         """
         field_class = HyperlinkedDataclassSerializer
-        field_kwargs = {'dataclass': field_info.type, 'many': field_info.is_many, 'allow_null': field_info.is_optional}
+        field_kwargs = {'dataclass': type_info.base_type,
+                        'many': type_info.is_many,
+                        'allow_null': type_info.is_optional}
 
         return field_class, field_kwargs

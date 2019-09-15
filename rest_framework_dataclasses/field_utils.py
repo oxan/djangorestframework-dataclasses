@@ -1,7 +1,6 @@
 import dataclasses
 import inspect
 import typing
-from collections import namedtuple
 
 from rest_framework.utils.model_meta import RelationInfo
 
@@ -9,26 +8,20 @@ from rest_framework_dataclasses import typing_utils
 
 T = typing.TypeVar('T')
 
-DataclassDefinition = namedtuple('DataclassDefinition', [
-    'type',         # Dataclass type
-    'fields',       # Dict of field name -> dataclass field instance
-    'field_types'   # Dict of field name -> type hint
-])
 
-FieldInfo = namedtuple('FieldInfo', [
-    'name',         # Field name
-    'type',         # Underlying, bare type
-    'is_many',      # Is this field iterable
-    'is_mapping',   # Is this field a mapping
-    'is_optional'   # Is this field optional
-])
+@dataclasses.dataclass
+class DataclassDefinition:
+    dataclass_type: type
+    fields: typing.Dict[str, dataclasses.Field]
+    field_types: typing.Dict[str, type]
 
-TypeInfo = namedtuple('TypeInfo', [
-    'is_many',      # Is this type iterable
-    'is_mapping',   # Is this type a mapping
-    'is_optional',  # Is this type optional
-    'base_type'     # Underlying base type
-])
+
+@dataclasses.dataclass
+class TypeInfo:
+    is_many: bool
+    is_mapping: bool
+    is_optional: bool
+    base_type: type
 
 
 def get_dataclass_definition(dataclass_type: type) -> DataclassDefinition:
@@ -66,22 +59,12 @@ def get_type_info(tp: type) -> TypeInfo:
     return TypeInfo(is_many, is_mapping, is_optional, tp)
 
 
-def get_field_info(definition: DataclassDefinition, field_name: str) -> FieldInfo:
-    """
-    Get the name and type information of a field.
-    """
-    type_hint = definition.field_types[field_name]
-    type_info = get_type_info(type_hint)
-
-    return FieldInfo(field_name, type_info.base_type, type_info.is_many, type_info.is_mapping, type_info.is_optional)
-
-
-def get_relation_info(definition: DataclassDefinition, field_info: FieldInfo) -> RelationInfo:
+def get_relation_info(definition: DataclassDefinition, type_info: TypeInfo) -> RelationInfo:
     # TODO needs checks first
     return RelationInfo(
         model_field=None,
-        related_model=field_info.type,
-        to_many=field_info.is_many,
+        related_model=type_info.base_type,
+        to_many=type_info.is_many,
         to_field=None,
         has_through_model=False,
         reverse=False
