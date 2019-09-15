@@ -15,12 +15,19 @@ DataclassDefinition = namedtuple('DataclassDefinition', [
     'field_types'   # Dict of field name -> type hint
 ])
 
-FieldInfo = namedtuple('TypeInfo', [
+FieldInfo = namedtuple('FieldInfo', [
     'name',         # Field name
     'type',         # Underlying, bare type
     'is_many',      # Is this field iterable
     'is_mapping',   # Is this field a mapping
     'is_optional'   # Is this field optional
+])
+
+TypeInfo = namedtuple('TypeInfo', [
+    'is_many',      # Is this type iterable
+    'is_mapping',   # Is this type a mapping
+    'is_optional',  # Is this type optional
+    'base_type'     # Underlying base type
 ])
 
 
@@ -40,25 +47,33 @@ def get_dataclass_definition(dataclass_type: type) -> DataclassDefinition:
     return DataclassDefinition(dataclass_type, fields, types)
 
 
-def get_field_info(definition: DataclassDefinition, field_name: str) -> FieldInfo:
+def get_type_info(tp: type) -> TypeInfo:
     """
-    Reduce iterable and optional types to their 'bare' types and flags for
+    Reduce iterable and optional types to their 'base' types.
     """
-    tp = definition.field_types[field_name]
-
     is_mapping = typing_utils.is_mapping_type(tp)
+    is_many = typing_utils.is_iterable_type(tp)
+
     if is_mapping:
         tp = typing_utils.get_mapping_value_type(tp)
-
-    is_many = typing_utils.is_iterable_type(tp)
-    if is_many:
+    elif is_many:  # This must be elif (instead of if), as otherwise we'd reduce mappings twice
         tp = typing_utils.get_iterable_element_type(tp)
 
     is_optional = typing_utils.is_optional_type(tp)
     if is_optional:
         tp = typing_utils.get_optional_type(tp)
 
-    return FieldInfo(field_name, tp, is_many, is_mapping, is_optional)
+    return TypeInfo(is_many, is_mapping, is_optional, tp)
+
+
+def get_field_info(definition: DataclassDefinition, field_name: str) -> FieldInfo:
+    """
+    Get the name and type information of a field.
+    """
+    type_hint = definition.field_types[field_name]
+    type_info = get_type_info(type_hint)
+
+    return FieldInfo(field_name, type_info.base_type, type_info.is_many, type_info.is_mapping, type_info.is_optional)
 
 
 def get_relation_info(definition: DataclassDefinition, field_info: FieldInfo) -> RelationInfo:

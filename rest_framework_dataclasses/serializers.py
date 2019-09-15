@@ -13,7 +13,7 @@ from rest_framework.relations import PrimaryKeyRelatedField, HyperlinkedRelatedF
 from rest_framework.utils.field_mapping import get_relation_kwargs
 
 from rest_framework_dataclasses import field_utils
-from rest_framework_dataclasses.field_utils import DataclassDefinition, get_dataclass_definition, FieldInfo
+from rest_framework_dataclasses.field_utils import DataclassDefinition, get_dataclass_definition, FieldInfo, TypeInfo
 
 
 # Define some types to make type hinting more readable
@@ -238,53 +238,70 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
             field_info = field_utils.get_field_info(definition, field_name)
             if dataclasses.is_dataclass(field_info.type):
                 return self.build_nested_field(definition, field_info)
-            elif isinstance(field_info.type, type):
-                if issubclass(field_info.type, Model):
-                    return self.build_relational_field(definition, field_info)
-                else:
-                    return self.build_standard_field(definition, field_info)
+            elif isinstance(field_info.type, type) and issubclass(field_info.type, Model):
+                return self.build_relational_field(definition, field_info)
             else:
-                return self.build_unknown_typed_field(definition, field_info)
+                return self.build_standard_field(definition, field_info)
 
         elif hasattr(definition.type, field_name):
             return self.build_property_field(definition, field_name)
 
         return self.build_unknown_field(definition, field_name)
 
+    def build_standard_field_recurse(self, type_info: TypeInfo, extra_kwargs_for_field: KWArgs) \
+            -> SerializerFieldDefinition:
+        if type_info.is_mapping or type_info.is_many:
+            # For composite types, recurse to build the child field (i.e. the field of very instance). Allow extra
+            # kwargs to be specified for the child field by including them in the `child_kwargs` field in the extra
+            # kwargs of the parent field.
+            # Note that include_extra_kwargs() isn't called here on purpose, as it's called on method exit and as such
+            # the extra kwargs are already included in the `child_field_kwargs` value.
+            base_type_info = field_utils.get_type_info(type_info.base_type)
+            extra_child_field_kwargs = extra_kwargs_for_field.get('child_kwargs', {})
+            child_field_class, child_field_kwargs = self.build_standard_field_recurse(base_type_info,
+                                                                                      extra_child_field_kwargs)
+
+            # Create child field and initialize parent field kwargs
+            child_field = child_field_class(**child_field_kwargs)
+            field_kwargs = {'child': child_field}
+
+            if type_info.is_mapping:
+                field_class = rest_framework.fields.DictField
+            else:
+                field_class = rest_framework.fields.ListField
+        else:
+            try:
+                field_class = field_utils.lookup_type_in_mapping(self.serializer_field_mapping, type_info.base_type)
+                field_kwargs = {'allow_null': type_info.is_optional}
+            except KeyError:
+                # When resolving the type hint fails, we want a nice error message including the complete type
+                # definition of the field, but that might not be available when we're called recursively. Instead raise
+                # a generic NotImplementedError, which is caught at the top-level and gains a nice error message there.
+                raise NotImplementedError()
+
+        # Also include the extra kwargs for the field here. For the top-level field this is done after build_field(),
+        # but we might be called recursively for nested dictionaries and the like, where we want the ability to specify
+        # kwargs at any level.
+        field_kwargs = self.include_extra_kwargs(field_kwargs, extra_kwargs_for_field)
+
+        return field_class, field_kwargs
+
     def build_standard_field(self, definition: DataclassDefinition, field_info: FieldInfo) -> SerializerFieldDefinition:
         """
         Create regular dataclass fields.
         """
         try:
-            field_class = field_utils.lookup_type_in_mapping(self.serializer_field_mapping, field_info.type)
-            field_kwargs = {'allow_null': field_info.is_optional}
-        except KeyError:
+            # For nested fields, we allow extra kwargs to be passed to fields at any level by including them in the
+            # `child_kwargs` field in the parents field extra kwargs. For this to function, we need access to the whole
+            # extra kwargs tree while building fields, so extract it here as well.
+            extra_kwargs = self.get_extra_kwargs()
+            extra_kwargs_for_field = extra_kwargs.get(field_info.name, {})
+
+            type_info = TypeInfo(field_info.is_mapping, field_info.is_many, field_info.is_optional, field_info.type)
+            return self.build_standard_field_recurse(type_info, extra_kwargs_for_field)
+        except NotImplementedError:
             # When resolving the type hint fails, fallback to the unknown type error.
             return self.build_unknown_typed_field(definition, field_info)
-
-        if not issubclass(field_class, rest_framework.fields.CharField) \
-                and not issubclass(field_class, rest_framework.fields.ChoiceField):
-            # `allow_blank` is only valid for textual fields.
-            field_kwargs.pop('allow_blank', None)
-
-        if field_info.is_mapping or field_info.is_many:
-            # Allow extra kwargs for the child field (i.e. the field of every instance) to be specified in the
-            # metaclass by including them in `child_kwargs` field in the parent's field extra kwargs.
-            extra_kwargs = self.get_extra_kwargs()
-            extra_field_kwargs = extra_kwargs.get(field_info.name, {})
-            extra_child_field_kwargs = extra_field_kwargs.get('child_kwargs', {})
-
-            field_kwargs = self.include_extra_kwargs(field_kwargs, extra_child_field_kwargs)
-            child_field = field_class(**field_kwargs)
-
-            # allow_empty was only added for DictField in 3.10, but it defaults to True anyway, so don't bother.
-            field_kwargs = {'child': child_field}
-            if field_info.is_mapping:
-                field_class = rest_framework.fields.DictField
-            elif field_info:
-                field_class = rest_framework.fields.ListField
-
-        return field_class, field_kwargs
 
     def build_relational_field(self, definition: DataclassDefinition, field_info: FieldInfo) \
             -> SerializerFieldDefinition:
