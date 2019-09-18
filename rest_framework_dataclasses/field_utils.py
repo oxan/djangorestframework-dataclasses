@@ -44,6 +44,10 @@ def get_type_info(tp: type) -> TypeInfo:
     """
     Reduce iterable and optional types to their 'base' types.
     """
+    is_optional = typing_utils.is_optional_type(tp)
+    if is_optional:
+        tp = typing_utils.get_optional_type(tp)
+
     is_mapping = typing_utils.is_mapping_type(tp)
     is_many = typing_utils.is_iterable_type(tp)
 
@@ -51,10 +55,6 @@ def get_type_info(tp: type) -> TypeInfo:
         tp = typing_utils.get_mapping_value_type(tp)
     elif is_many:  # This must be elif (instead of if), as otherwise we'd reduce mappings twice
         tp = typing_utils.get_iterable_element_type(tp)
-
-    is_optional = typing_utils.is_optional_type(tp)
-    if is_optional:
-        tp = typing_utils.get_optional_type(tp)
 
     return TypeInfo(is_many, is_mapping, is_optional, tp)
 
