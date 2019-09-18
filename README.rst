@@ -4,6 +4,12 @@ Dataclasses serializer
 A `dataclasses <https://docs.python.org/3/library/dataclasses.html>`__ serializer for the `Django REST Framework
 <http://www.django-rest-framework.org/>`__.
 
+.. image:: https://travis-ci.org/oxan/djangorestframework-dataclasses.svg?branch=master
+   :target: https://travis-ci.org/oxan/djangorestframework-dataclasses
+.. image:: https://badge.fury.io/py/djangorestframework-dataclasses.svg
+   :target: https://badge.fury.io/py/djangorestframework-dataclasses
+
+
 Requirements
 ------------
 
