@@ -148,7 +148,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 
     # Methods for determining the set of field names to include...
 
-    def get_field_names(self, declared_fields: Mapping[str, SerializerField], definition: DataclassDefinition) -> List[str]:
+    def get_field_names(self, declared_fields: Mapping[str, SerializerField], definition: DataclassDefinition) \
+            -> List[str]:
         """
         Returns the list of all field names that should be created when instantiating this serializer class. This is
         based on the default set of fields, but also takes into account the `Meta.fields` or `Meta.exclude` options
@@ -175,11 +176,14 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
             .format(serializer_class=self.__class__.__name__)
         )
 
-        if fields == rest_framework.serializers.ALL_FIELDS:
-            fields = None
+        # If fields is not specified, or is the magic all fields option, make it a list consisting of the all fields
+        # placeholder for now.
+        if fields is None or fields == rest_framework.serializers.ALL_FIELDS:
+            fields = [rest_framework.serializers.ALL_FIELDS]
 
-        if fields is not None:
-            # Ensure that all declared fields have also been included in the `Meta.fields` option.
+        if rest_framework.serializers.ALL_FIELDS not in fields:
+            # If fields are explicitly specified without including the all fields magic option, ensure that all declared
+            # fields have also been included in the `Meta.fields` option, and return those fields.
 
             # Do not require any fields that are declared in a parent class, in order to allow serializer subclasses to
             # only include a subset of fields.
@@ -195,8 +199,10 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
                 )
             return fields
 
-        # Use the default set of field names if `Meta.fields` is not specified.
-        fields = self.get_default_field_names(declared_fields, definition)
+        # The field list now includes the magic all fields option, so replace it with the default field names.
+        fields = list(fields)
+        fields.remove(rest_framework.serializers.ALL_FIELDS)
+        fields.extend(self.get_default_field_names(declared_fields, definition))
 
         if exclude is not None:
             # If `Meta.exclude` is included, then remove those fields.
