@@ -34,6 +34,7 @@ def is_iterable_type(tp: type) -> bool:
     # * The element type is the first item in __args__
     return (
         isinstance(tp, typing._GenericAlias) and
+        isinstance(tp.__origin__, type) and
         issubclass(tp.__origin__, collections.abc.Iterable) and
         len(tp.__args__) >= 1
     )
@@ -65,6 +66,7 @@ def is_mapping_type(tp: type) -> bool:
     # * The value type is the second (of two) item in __args__
     return (
         isinstance(tp, typing._GenericAlias) and
+        isinstance(tp.__origin__, type) and
         issubclass(tp.__origin__, collections.abc.Mapping) and
         len(tp.__args__) == 2
     )
