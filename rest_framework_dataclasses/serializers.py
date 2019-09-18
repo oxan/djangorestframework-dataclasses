@@ -54,10 +54,11 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
     }
     serializer_related_field = PrimaryKeyRelatedField
 
-    # Override constructor to allow "anonymous" usage by passing the dataclass type as a constructor parameter instead
-    # of via a Meta class.
+    # Override constructor to allow "anonymous" usage by passing the dataclass type and extra kwargs as a constructor
+    # parameter instead of via a Meta class.
     def __init__(self, *args, **kwargs):
         self.dataclass = kwargs.pop('dataclass', None)
+        self.extra_kwargs = kwargs.pop('extra_kwargs', None)
         super(DataclassSerializer, self).__init__(*args, **kwargs)
 
     # Utility functions
@@ -128,21 +129,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
                 continue
 
             extra_field_kwargs = extra_kwargs.get(field_name, {})
-
-            # Get the source field (this can be useful to represent a single dataclass field in multiple ways in the
-            # serialization state).
-            source = extra_field_kwargs.get('source', '*')
-            if source == '*':
-                source = field_name
-
-            # Determine the serializer field class and keyword arguments.
-            field_class, field_kwargs = self.build_field(source, definition)
-
-            # Include any kwargs defined in `Meta.extra_kwargs`
-            field_kwargs = self.include_extra_kwargs(field_kwargs, extra_field_kwargs)
-
-            # Create the serializer field instance.
-            fields[field_name] = field_class(**field_kwargs)
+            fields[field_name] = self.create_field(definition, field_name, extra_field_kwargs)
 
         return fields
 
@@ -236,70 +223,86 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 
     # Methods for constructing serializer fields...
 
-    def build_field(self, field_name: str, definition: DataclassDefinition) -> SerializerFieldDefinition:
+    def create_field(self, definition: DataclassDefinition, field_name: str, extra_kwargs: KWArgs) -> SerializerField:
+        # Get the source field (this can be useful to represent a single dataclass field in multiple ways in the
+        # serialization state).
+        source = extra_kwargs.get('source', '*')
+        if source == '*':
+            source = field_name
+
+        # Determine the serializer field class and keyword arguments.
+        if source in definition.fields:
+            type_info = field_utils.get_type_info(definition.field_types[source])
+            field_class, field_kwargs = self.build_typed_field(definition, source, type_info, extra_kwargs)
+        elif hasattr(definition.dataclass_type, source):
+            field_class, field_kwargs = self.build_property_field(definition, source)
+        else:
+            field_class, field_kwargs = self.build_unknown_field(definition, source)
+
+        # Include any extra kwargs defined through `Meta.extra_kwargs`
+        field_kwargs = self.include_extra_kwargs(field_kwargs, extra_kwargs)
+
+        # Create the serializer field instance.
+        return field_class(**field_kwargs)
+
+    def build_typed_field(self, definition: DataclassDefinition, field_name: str, type_info: TypeInfo,
+                          extra_kwargs: KWArgs) -> SerializerFieldDefinition:
         """
-        Return a two tuple of (cls, kwargs) to build a serializer field with.
+        Create a serializer field for a typed dataclass field.
         """
-        if field_name in definition.fields:
-            type_info = field_utils.get_type_info(definition.field_types[field_name])
-            if dataclasses.is_dataclass(type_info.base_type):
-                return self.build_nested_field(definition, field_name, type_info)
-            elif isinstance(type_info.base_type, type) and issubclass(type_info.base_type, Model):
-                return self.build_relational_field(definition, field_name, type_info)
-            else:
-                return self.build_standard_field(definition, field_name, type_info)
+        if type_info.is_mapping or type_info.is_many:
+            return self.build_composite_field(definition, field_name, type_info, extra_kwargs)
+        elif dataclasses.is_dataclass(type_info.base_type):
+            return self.build_nested_field(definition, field_name, type_info)
+        elif isinstance(type_info.base_type, type) and issubclass(type_info.base_type, Model):
+            return self.build_relational_field(definition, field_name, type_info)
+        else:
+            return self.build_standard_field(definition, field_name, type_info)
 
-        elif hasattr(definition.dataclass_type, field_name):
-            return self.build_property_field(definition, field_name)
+    def build_composite_field(self, definition: DataclassDefinition, field_name: str, type_info: TypeInfo,
+                              extra_kwargs: KWArgs) -> SerializerFieldDefinition:
+        """
+        Create a composite (mapping or list) field.
+        """
+        # Recurse to build the child field (i.e. the field of every instance). We pass the extra kwargs that are
+        # specified for the child field through, so these can be used to recursively specify kwargs for child fields.
+        extra_child_field_kwargs = extra_kwargs.get('child_kwargs', {})
+        base_type_info = field_utils.get_type_info(type_info.base_type)
+        child_field_class, child_field_kwargs = self.build_typed_field(definition, field_name, base_type_info,
+                                                                       extra_child_field_kwargs)
 
-        return self.build_unknown_field(definition, field_name)
+        # Include the extra kwargs specified for the child field before instantiating it.
+        child_field_kwargs = self.include_extra_kwargs(child_field_kwargs, extra_child_field_kwargs)
 
-    def build_standard_field(self, definition: DataclassDefinition, field_name: str, type_info: TypeInfo,
-                             extra_kwargs_for_field: KWArgs = None) -> SerializerFieldDefinition:
+        # Create child field and initialize parent field kwargs
+        child_field = child_field_class(**child_field_kwargs)
+        field_kwargs = {'allow_null': type_info.is_optional, 'child': child_field}
+
+        if type_info.is_mapping:
+            field_class = rest_framework.fields.DictField
+        else:
+            field_class = rest_framework.fields.ListField
+
+        return field_class, field_kwargs
+
+    def build_standard_field(self, definition: DataclassDefinition, field_name: str, type_info: TypeInfo) \
+            -> SerializerFieldDefinition:
         """
         Create regular dataclass fields.
         """
-        if extra_kwargs_for_field is None:
-            # For nested fields, we allow extra kwargs to be passed to fields at any level by including them in the
-            # `child_kwargs` field in the parents field extra kwargs. Since we need to instantiate child fields here
-            # directly, extract the whole kwargs tree on the outer-most invocation where it's not supplied.
-            extra_kwargs = self.get_extra_kwargs()
-            extra_kwargs_for_field = extra_kwargs.get(field_name, {})
-
-        if type_info.is_mapping or type_info.is_many:
-            # For composite types, recurse to build the child field (i.e. the field of very instance). We pass the extra
-            # kwargs that are specified for the child field through, as we include them in the returned value on method
-            # exit by calling `include_extra_kwargs()`.
-            base_type_info = field_utils.get_type_info(type_info.base_type)
-            extra_child_field_kwargs = extra_kwargs_for_field.get('child_kwargs', {})
-            child_field_class, child_field_kwargs = self.build_standard_field(definition, field_name, base_type_info,
-                                                                              extra_child_field_kwargs)
-
-            # Create child field and initialize parent field kwargs
-            child_field = child_field_class(**child_field_kwargs)
-            field_kwargs = {'child': child_field}
-
-            if type_info.is_mapping:
-                field_class = rest_framework.fields.DictField
-            else:
-                field_class = rest_framework.fields.ListField
-        else:
-            try:
-                field_class = field_utils.lookup_type_in_mapping(self.serializer_field_mapping, type_info.base_type)
-                field_kwargs = {'allow_null': type_info.is_optional}
-            except KeyError:
-                # When resolving the type hint fails, raise a nice descriptive error.
-                field_type = definition.field_types[field_name]
-                raise NotImplementedError(
-                    "Automatic serializer field deduction not supported for field '{field}' on '{dataclass}' "
-                    "of type '{type}'."
-                    .format(dataclass=definition.dataclass_type.__name__, field=field_name, type=field_type)
-                )
-
-        # Also include the extra kwargs for the field here. For the top-level field this is already done after
-        # build_field(), but we might be called recursively, where the field is initialized directly.
-        field_kwargs = self.include_extra_kwargs(field_kwargs, extra_kwargs_for_field)
-        return field_class, field_kwargs
+        try:
+            field_class = field_utils.lookup_type_in_mapping(self.serializer_field_mapping, type_info.base_type)
+            field_kwargs = {'allow_null': type_info.is_optional}
+            return field_class, field_kwargs
+        except KeyError:
+            # When resolving the type hint fails, raise a nice descriptive error based on the outermost type of the
+            # field (this makes solving deep recursive errors much easier).
+            field_type = definition.field_types[field_name]
+            raise NotImplementedError(
+                "Automatic serializer field deduction not supported for field '{field}' on '{dataclass}' "
+                "of type '{type}'."
+                .format(dataclass=definition.dataclass_type.__name__, field=field_name, type=field_type)
+            )
 
     def build_relational_field(self, definition: DataclassDefinition, field_name: str, type_info: TypeInfo) \
             -> SerializerFieldDefinition:
@@ -379,7 +382,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         Return a dictionary mapping field names to a dictionary of additional keyword arguments.
         """
         meta = getattr(self, 'Meta', None)
-        extra_kwargs = copy.deepcopy(getattr(meta, 'extra_kwargs', {}))
+        extra_kwargs = copy.deepcopy(getattr(meta, 'extra_kwargs', None)) if meta is not None else None
+        if extra_kwargs is None:
+            extra_kwargs = self.extra_kwargs or {}
 
         read_only_fields = getattr(meta, 'read_only_fields', None)
         if read_only_fields is not None:
