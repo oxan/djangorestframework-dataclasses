@@ -1,8 +1,23 @@
+# Byte compilation and cache files
 __pycache__/
-*.pyc
+*.py[cod]
 
+# Distribution and packaging
 build/
 dist/
+eggs/
+lib/
+sdist/
+wheels/
 *.egg-info/
+*.egg
+MANIFEST
 
+# Testing reports
+.tox/
+
+# Environments
+.env
+.venv
 env/
+venv/
