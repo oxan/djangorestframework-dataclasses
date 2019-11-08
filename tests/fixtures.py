@@ -1,6 +1,7 @@
 import datetime
 import decimal
 import typing
+import uuid
 
 from dataclasses import dataclass
 
@@ -13,6 +14,7 @@ class Pet:
 
 @dataclass
 class Person:
+    id: uuid.UUID
     name: str
     email: str
     alive: bool
