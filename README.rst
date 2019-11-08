@@ -225,6 +225,7 @@ So far, field generation is supported for the following types and their subclass
 * ``str``, ``bool``, ``int`` and ``float``.
 * ``date``, ``datetime``, ``time`` and ``timedelta`` from the ``datetime`` package.
 * ``decimal.Decimal`` (requires specifying ``max_digits`` and ``decimal_places`` through ``extra_kwargs``).
+* ``uuid.UUID``
 * ``typing.Iterable`` (including ``typing.List``).
 * ``typing.Mapping`` (including ``typing.Dict``).
 * ``django.db.Model``
