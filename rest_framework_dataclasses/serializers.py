@@ -2,6 +2,7 @@ import copy
 import dataclasses
 import datetime
 import decimal
+import uuid
 from collections import OrderedDict
 from typing import List, Type, Dict, Any, Tuple, Mapping, NoReturn
 
@@ -50,7 +51,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         datetime.date:      rest_framework.fields.DateField,
         datetime.datetime:  rest_framework.fields.DateTimeField,
         datetime.time:      rest_framework.fields.TimeField,
-        datetime.timedelta: rest_framework.fields.DurationField
+        datetime.timedelta: rest_framework.fields.DurationField,
+        uuid.UUID:          rest_framework.fields.UUIDField,
     }
     serializer_related_field = PrimaryKeyRelatedField
 

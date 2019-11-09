@@ -20,7 +20,10 @@ class SerializerTestCase(TestCase):
 
         serializer = PersonSerializer()
         f = serializer.get_fields()
-        self.assertEqual(len(f), 8)
+        self.assertEqual(len(f), 9)
+
+        self.assertIsInstance(f['id'], fields.UUIDField)
+        self.assertFalse(f['id'].allow_null)
 
         self.assertIsInstance(f['name'], fields.CharField)
         self.assertFalse(f['name'].allow_null)
