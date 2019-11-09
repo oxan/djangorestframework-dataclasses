@@ -13,8 +13,8 @@ wheels/
 *.egg
 MANIFEST
 
-# Testing reports
-.coverage/
+# Testing
+.coverage
 .tox/
 
 # Environments

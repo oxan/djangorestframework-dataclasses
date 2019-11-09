@@ -6,6 +6,8 @@ A `dataclasses <https://docs.python.org/3/library/dataclasses.html>`__ serialize
 
 .. image:: https://travis-ci.org/oxan/djangorestframework-dataclasses.svg?branch=master
    :target: https://travis-ci.org/oxan/djangorestframework-dataclasses
+.. image:: https://codecov.io/gh/oxan/djangorestframework-dataclasses/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/oxan/djangorestframework-dataclasses
 .. image:: https://badge.fury.io/py/djangorestframework-dataclasses.svg
    :target: https://badge.fury.io/py/djangorestframework-dataclasses
 
