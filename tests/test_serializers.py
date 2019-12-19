@@ -193,3 +193,26 @@ class ErrorsTestCase(TestCase):
 
         with self.assertRaises(ImproperlyConfigured):
             UnknownSerializer().get_fields()
+
+    def test_nested_deserialize(self):
+        person_data = {
+            'id': '7617DF15-008C-4018-92E7-5690F1B9A6D4',
+            'name': 'Foo Bar',
+            'email': 'bla@bla.com',
+            'alive': True,
+            'weight': None,
+            'birth_date': None,
+            'phone': [],
+            'movie_ratings': None,
+        }
+        ser = DataclassSerializer(dataclass=fixtures.House, data={
+            'address': 'Bla street 10',
+            'owner': person_data,
+            'residents': [person_data],
+            'room_area': {}
+        })
+        ser.is_valid(raise_exception=True)
+        house = ser.save()
+        assert isinstance(house, fixtures.House)
+        assert isinstance(house.owner, fixtures.Person), f"owner is {house.owner}"
+        assert isinstance(house.residents[0], fixtures.Person)
