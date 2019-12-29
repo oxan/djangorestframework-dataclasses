@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 
+import os
 from setuptools import find_packages, setup
 
 with open('README.rst', 'r') as fp:
     long_description = fp.read()
+
+# FIXME The tests need this, but setting it here seems ugly.
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tests.django_settings")
 
 setup(
     name='djangorestframework-dataclasses',
