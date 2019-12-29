@@ -1,3 +1,7 @@
+import copy
+import datetime
+import uuid
+
 from dataclasses import dataclass
 from unittest import TestCase
 
@@ -96,6 +100,57 @@ class SerializerTestCase(TestCase):
         resident_fields = house_fields['residents'].child.get_fields()
         self.assertEqual(resident_fields['movie_ratings'].child.min_value, 0)
         self.assertEqual(resident_fields['movie_ratings'].child.max_value, 10)
+
+
+class SerializationTestCase(TestCase):
+    person_instance = fixtures.alice
+    person_serialized = {
+        'id': str(person_instance.id),
+        'name': person_instance.name,
+        'email': person_instance.email,
+        'alive': person_instance.alive,
+        'phone': person_instance.phone,
+        'weight': person_instance.weight,
+        'birth_date': person_instance.birth_date.isoformat(),
+        'movie_ratings': person_instance.movie_ratings
+    }
+
+    class PersonSerializer(DataclassSerializer):
+        class Meta:
+            dataclass = fixtures.Person
+
+    def test_serialize(self):
+        serializer = self.PersonSerializer(instance=self.person_instance)
+        self.assertDictEqual(serializer.data, self.person_serialized)
+
+    def test_deserialize(self):
+        serializer = self.PersonSerializer(data=self.person_serialized)
+        serializer.is_valid(raise_exception=True)
+        result = serializer.validated_data
+
+        self.assertIsInstance(result['id'], uuid.UUID)
+        self.assertIsInstance(result['alive'], bool)
+        self.assertIsInstance(result['weight'], float)
+        self.assertIsInstance(result['birth_date'], datetime.date)
+        self.assertIsInstance(result['movie_ratings'], dict)
+
+    def test_create(self):
+        serializer = self.PersonSerializer(data=self.person_serialized)
+        serializer.is_valid(raise_exception=True)
+        person = serializer.save()
+
+        self.assertIsInstance(person, fixtures.Person)
+        self.assertEqual(person, self.person_instance)
+
+    def test_update(self):
+        instance = copy.deepcopy(fixtures.charlie)
+        serializer = self.PersonSerializer(instance=instance, data=self.person_serialized)
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+
+        self.assertIsInstance(result, fixtures.Person)
+        self.assertIs(result, instance)
+        self.assertEqual(result, self.person_instance)
 
 
 class ErrorsTestCase(TestCase):
