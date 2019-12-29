@@ -153,6 +153,48 @@ class SerializationTestCase(TestCase):
         self.assertEqual(result, self.person_instance)
 
 
+class NestedSerializationTestCase(TestCase):
+    house_dataclass = fixtures.alices_house
+    house_serialized = {
+        'address': house_dataclass.address,
+        'owner': {
+            'id': str(house_dataclass.owner.id),
+            'name': house_dataclass.owner.name,
+            'email': house_dataclass.owner.email,
+            'alive': house_dataclass.owner.alive,
+            'phone': house_dataclass.owner.phone,
+            'weight': house_dataclass.owner.weight,
+            'birth_date': house_dataclass.owner.birth_date.isoformat(),
+            'movie_ratings': house_dataclass.owner.movie_ratings
+        },
+        'residents': [
+            {
+                'id': str(house_dataclass.residents[0].id),
+                'name': house_dataclass.residents[0].name,
+                'email': house_dataclass.residents[0].email,
+                'alive': house_dataclass.residents[0].alive,
+                'phone': house_dataclass.residents[0].phone,
+                'weight': None,
+                'birth_date': None,
+                'movie_ratings': None
+            }
+        ],
+        'room_area': house_dataclass.room_area
+    }
+
+    def test_create(self):
+        serializer = DataclassSerializer(dataclass=fixtures.House, data=self.house_serialized)
+        serializer.is_valid(raise_exception=True)
+        house = serializer.save()
+
+        self.assertIsInstance(house, fixtures.House)
+        self.assertIsInstance(house.owner, fixtures.Person)
+        self.assertIsInstance(house.residents, list)
+        self.assertIsInstance(house.residents[0], fixtures.Person)
+        self.assertIsInstance(house.room_area, dict)
+        self.assertEqual(house, self.house_dataclass)
+
+
 class ErrorsTestCase(TestCase):
     def test_invalid_dataclass_specification(self):
         class ExplicitPersonSerializer(DataclassSerializer):
@@ -248,26 +290,3 @@ class ErrorsTestCase(TestCase):
 
         with self.assertRaises(ImproperlyConfigured):
             UnknownSerializer().get_fields()
-
-    def test_nested_deserialize(self):
-        person_data = {
-            'id': '7617DF15-008C-4018-92E7-5690F1B9A6D4',
-            'name': 'Foo Bar',
-            'email': 'bla@bla.com',
-            'alive': True,
-            'weight': None,
-            'birth_date': None,
-            'phone': [],
-            'movie_ratings': None,
-        }
-        ser = DataclassSerializer(dataclass=fixtures.House, data={
-            'address': 'Bla street 10',
-            'owner': person_data,
-            'residents': [person_data],
-            'room_area': {}
-        })
-        ser.is_valid(raise_exception=True)
-        house = ser.save()
-        assert isinstance(house, fixtures.House)
-        assert isinstance(house.owner, fixtures.Person), f"owner is {house.owner}"
-        assert isinstance(house.residents[0], fixtures.Person)
