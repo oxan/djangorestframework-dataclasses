@@ -87,14 +87,39 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 
     # Default `create` and `update` behavior...
 
+    def instantiate_data_dictionaries(self, validated_data, instance=None):
+        """
+        Instantiate the values in a deserialized data dictionaries to their respective classes (for now only nested
+        dataclasses).
+        """
+        # I'm not sure this is actually the best way to deserialize into nested dataclasses. The cleanest way seems to
+        # be overriding to_internal_value(), but the top-level serializer must return a dictionary from that method. We
+        # could split nested dataclasses off into a separate DataclassField (which could in general clean-up the code a
+        # bit), but that breaks specifying nested serializers using a single class. Let's use this ugly hack until I can
+        # think of something better.
+
+        ret = {}
+        for attr, value in validated_data.items():
+            field = self.fields[attr]
+
+            if isinstance(field, DataclassSerializer):
+                value = field.update(getattr(instance, attr), value) if instance else field.create(value)
+            elif isinstance(field, rest_framework.fields.ListField) and isinstance(field.child, DataclassSerializer):
+                value = [field.child.create(item) for item in value]
+            elif isinstance(field, rest_framework.fields.DictField) and isinstance(field.child, DataclassSerializer):
+                value = {key: field.child.create(item) for key, item in value}
+
+            ret[attr] = value
+
+        return ret
+
     def create(self, validated_data):
         dataclass_type = self.get_dataclass_type()
-        return dataclass_type(**validated_data)
+        return dataclass_type(**self.instantiate_data_dictionaries(validated_data))
 
     def update(self, instance, validated_data):
-        for attr, value in validated_data.items():
+        for attr, value in self.instantiate_data_dictionaries(validated_data, instance).items():
             setattr(instance, attr, value)
-
         return instance
 
     # Determine the fields to apply...

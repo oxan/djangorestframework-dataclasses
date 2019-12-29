@@ -1,3 +1,7 @@
+import copy
+import datetime
+import uuid
+
 from dataclasses import dataclass
 from unittest import TestCase
 
@@ -96,6 +100,99 @@ class SerializerTestCase(TestCase):
         resident_fields = house_fields['residents'].child.get_fields()
         self.assertEqual(resident_fields['movie_ratings'].child.min_value, 0)
         self.assertEqual(resident_fields['movie_ratings'].child.max_value, 10)
+
+
+class SerializationTestCase(TestCase):
+    person_instance = fixtures.alice
+    person_serialized = {
+        'id': str(person_instance.id),
+        'name': person_instance.name,
+        'email': person_instance.email,
+        'alive': person_instance.alive,
+        'phone': person_instance.phone,
+        'weight': person_instance.weight,
+        'birth_date': person_instance.birth_date.isoformat(),
+        'movie_ratings': person_instance.movie_ratings
+    }
+
+    class PersonSerializer(DataclassSerializer):
+        class Meta:
+            dataclass = fixtures.Person
+
+    def test_serialize(self):
+        serializer = self.PersonSerializer(instance=self.person_instance)
+        self.assertDictEqual(serializer.data, self.person_serialized)
+
+    def test_deserialize(self):
+        serializer = self.PersonSerializer(data=self.person_serialized)
+        serializer.is_valid(raise_exception=True)
+        result = serializer.validated_data
+
+        self.assertIsInstance(result['id'], uuid.UUID)
+        self.assertIsInstance(result['alive'], bool)
+        self.assertIsInstance(result['weight'], float)
+        self.assertIsInstance(result['birth_date'], datetime.date)
+        self.assertIsInstance(result['movie_ratings'], dict)
+
+    def test_create(self):
+        serializer = self.PersonSerializer(data=self.person_serialized)
+        serializer.is_valid(raise_exception=True)
+        person = serializer.save()
+
+        self.assertIsInstance(person, fixtures.Person)
+        self.assertEqual(person, self.person_instance)
+
+    def test_update(self):
+        instance = copy.deepcopy(fixtures.charlie)
+        serializer = self.PersonSerializer(instance=instance, data=self.person_serialized)
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+
+        self.assertIsInstance(result, fixtures.Person)
+        self.assertIs(result, instance)
+        self.assertEqual(result, self.person_instance)
+
+
+class NestedSerializationTestCase(TestCase):
+    house_dataclass = fixtures.alices_house
+    house_serialized = {
+        'address': house_dataclass.address,
+        'owner': {
+            'id': str(house_dataclass.owner.id),
+            'name': house_dataclass.owner.name,
+            'email': house_dataclass.owner.email,
+            'alive': house_dataclass.owner.alive,
+            'phone': house_dataclass.owner.phone,
+            'weight': house_dataclass.owner.weight,
+            'birth_date': house_dataclass.owner.birth_date.isoformat(),
+            'movie_ratings': house_dataclass.owner.movie_ratings
+        },
+        'residents': [
+            {
+                'id': str(house_dataclass.residents[0].id),
+                'name': house_dataclass.residents[0].name,
+                'email': house_dataclass.residents[0].email,
+                'alive': house_dataclass.residents[0].alive,
+                'phone': house_dataclass.residents[0].phone,
+                'weight': None,
+                'birth_date': None,
+                'movie_ratings': None
+            }
+        ],
+        'room_area': house_dataclass.room_area
+    }
+
+    def test_create(self):
+        serializer = DataclassSerializer(dataclass=fixtures.House, data=self.house_serialized)
+        serializer.is_valid(raise_exception=True)
+        house = serializer.save()
+
+        self.assertIsInstance(house, fixtures.House)
+        self.assertIsInstance(house.owner, fixtures.Person)
+        self.assertIsInstance(house.residents, list)
+        self.assertIsInstance(house.residents[0], fixtures.Person)
+        self.assertIsInstance(house.room_area, dict)
+        self.assertEqual(house, self.house_dataclass)
 
 
 class ErrorsTestCase(TestCase):
