@@ -16,8 +16,8 @@ Requirements
 ------------
 
 * Python (3.7+)
-* Django (2.0, 2.1, 2.2)
-* Django REST Framework (3.9, 3.10)
+* Django (2.0+)
+* Django REST Framework (3.9+)
 
 These are the supported Python and package versions. Older versions will probably work as well, but haven't been tested
 by the author.
