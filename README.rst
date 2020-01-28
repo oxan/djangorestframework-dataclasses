@@ -206,6 +206,59 @@ If you prefer to use hyperlinks to represent relationships rather than primary k
 the ``HyperlinkedDataclassSerializer`` class: it generates a ``HyperlinkedRelatedField`` instead of a
 ``PrimaryKeyRelatedField``.
 
+Nesting with extra kwargs
+-------------------------
+
+``extra_kwargs`` can be nested, in order to provide kwargs to fields belonging to nested models.
+Consider the following:
+
+  .. code:: Python
+    
+    @dataclass
+    class Transaction():
+      amount: Decimal
+      account_number: str
+      
+    
+    @dataclass
+    class Company():
+      sales: List[Transaction]
+
+ extra_kwargs = {
+            'add_charges': {
+                'child_kwargs': {
+                    'extra_kwargs': {
+                        'charge_nominal_amount': {
+                            'decimal_places': 2,
+                            'max_digits': 6,
+                        }
+                    }
+                }
+            }
+        }
+
+In order to tell DRF to give 2 decimal places to transaction account number, this is how you would write the serializer:
+
+  .. code:: Python
+
+    class CompanySerializer(DataclassSerializer):
+        class Meta:
+            dataclass = Company
+            
+            extra_kwargs = {
+                'sales': {
+                    'child_kwargs': { # Required because sales is a List, otherwise you could have the extra_kwargs directly
+                        'extra_kwargs': {
+                            'amount': {
+                                'max_digits': 6,
+                                'decimal_places': 2
+                            }
+                        }
+                    }
+                }
+            }
+
+
 Advanced usage
 --------------
 
