@@ -72,7 +72,13 @@ def get_relation_info(definition: DataclassDefinition, type_info: TypeInfo) -> R
 
 
 def lookup_type_in_mapping(mapping: typing.Dict[type, T], key: type) -> T:
-    for cls in inspect.getmro(key):
+    try:
+        # _SpecialForm types like Literal, NoReturn don't have an __mro__ attribute
+        bases = inspect.getmro(key)
+    except AttributeError:
+        raise KeyError("Special type {typ} not supported.".format(typ=key))
+
+    for cls in bases:
         if cls in mapping:
             return mapping[cls]
 
