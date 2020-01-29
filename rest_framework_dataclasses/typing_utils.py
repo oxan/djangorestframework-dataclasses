@@ -11,6 +11,12 @@ experimental. Maybe for the future.
 import collections
 import typing
 
+try:
+    # Python 3.8 and later
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
 
 def is_iterable_type(tp: type) -> bool:
     """
@@ -113,3 +119,19 @@ def get_optional_type(tp: type) -> type:
         raise ValueError('get_optional_type() called with non-optional type.')
 
     return next(argument_type for argument_type in tp.__args__ if argument_type is not type(None))
+
+
+def is_literal_type(tp: type) -> bool:
+    """
+    Is this type a Literal[...] expression?
+    """
+    # Stolen from typing_inspect
+    return (tp is Literal
+            or (isinstance(tp, typing._GenericAlias) and tp.__origin__ is Literal))
+
+
+def get_literal_choices(tp: type) -> tuple:
+    """
+    Return the possible values from a Literal[...] expression.
+    """
+    return tp.__args__

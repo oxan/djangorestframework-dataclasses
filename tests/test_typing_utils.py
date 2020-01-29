@@ -1,6 +1,6 @@
 import typing
 
-from unittest import TestCase
+from unittest import TestCase, SkipTest
 
 from rest_framework_dataclasses import typing_utils
 
@@ -61,3 +61,24 @@ class TypingTest(TestCase):
 
         with self.assertRaises(ValueError):
             typing_utils.get_optional_type(str)
+
+    # Make sure we recognize Literal from both 'typing' and 'typing_extensions'
+    def test_literal_py38(self):
+        try:
+            from typing import Literal
+        except ImportError:
+            raise SkipTest("typing.Literal not supported on current Python")
+
+        self.assertTrue(typing_utils.is_literal_type(Literal['a']))
+        self.assertEqual(typing_utils.get_literal_choices(Literal['a', 'b', None]),
+                         ('a', 'b', None))
+
+    def test_literal_extensions(self):
+        try:
+            from typing_extensions import Literal
+        except ImportError:
+            raise SkipTest("typing_extensions module not installed")
+
+        self.assertTrue(typing_utils.is_literal_type(Literal['a']))
+        self.assertEqual(typing_utils.get_literal_choices(Literal['a', 'b', None]),
+                         ('a', 'b', None))

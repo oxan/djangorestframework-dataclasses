@@ -13,7 +13,7 @@ import rest_framework.serializers
 from rest_framework.relations import PrimaryKeyRelatedField, HyperlinkedRelatedField
 from rest_framework.utils.field_mapping import get_relation_kwargs
 
-from rest_framework_dataclasses import field_utils
+from rest_framework_dataclasses import field_utils, typing_utils
 from rest_framework_dataclasses.field_utils import DataclassDefinition, get_dataclass_definition, TypeInfo
 
 
@@ -283,6 +283,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
             return self.build_nested_field(definition, field_name, type_info)
         elif isinstance(type_info.base_type, type) and issubclass(type_info.base_type, Model):
             return self.build_relational_field(definition, field_name, type_info)
+        elif typing_utils.is_literal_type(type_info.base_type):
+            return self.build_literal_field(definition, field_name, type_info)
         else:
             return self.build_standard_field(definition, field_name, type_info)
 
@@ -343,6 +345,21 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         # `view_name` is only valid for hyperlinked relationships.
         if not issubclass(field_class, HyperlinkedRelatedField):
             field_kwargs.pop('view_name', None)
+
+        return field_class, field_kwargs
+
+    def build_literal_field(self, definition: DataclassDefinition, field_name: str, type_info: TypeInfo) \
+            -> SerializerFieldDefinition:
+        """
+        Create ChoiceField from a Literal[...] type.
+        """
+        field_class = rest_framework.fields.ChoiceField
+        choices = typing_utils.get_literal_choices(type_info.base_type)
+        field_kwargs = {
+            'choices': [val for val in choices if val not in (None, '')],
+            'allow_null': (None in choices) or type_info.is_optional,
+            'allow_blank': '' in choices,
+        }
 
         return field_class, field_kwargs
 
