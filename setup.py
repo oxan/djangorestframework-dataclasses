@@ -34,6 +34,9 @@ setup(
         'Typing :: Typed'
     ],
     packages=find_packages(),
+    package_data={
+        'rest_framework_dataclasses': ['py.typed']
+    },
     python_requires='>=3.7',
     install_requires=[
         'django>=1.11',
