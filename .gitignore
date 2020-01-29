@@ -16,6 +16,7 @@ MANIFEST
 # Testing
 .coverage
 .tox/
+.mypy_cache/
 
 # Environments
 .env

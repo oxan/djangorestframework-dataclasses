@@ -4,6 +4,7 @@ import datetime
 import decimal
 import uuid
 from collections import OrderedDict
+from typing import List, Type, Dict, Any, Tuple, Mapping, Optional, Sequence
 from enum import Enum
 from typing import Any, Dict, Generic, Iterable, Mapping, Tuple, Type, TypeVar
 
@@ -13,18 +14,15 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model
 from django.utils.functional import cached_property
 from rest_framework.fields import empty
-from rest_framework.relations import HyperlinkedRelatedField, PrimaryKeyRelatedField
+from rest_framework.relations import HyperlinkedRelatedField, PrimaryKeyRelatedField, RelatedField
 from rest_framework.utils.field_mapping import get_relation_kwargs
 
 from rest_framework_dataclasses import fields, field_utils, typing_utils
 from rest_framework_dataclasses.field_utils import get_dataclass_definition, DataclassDefinition, TypeInfo
-from rest_framework_dataclasses.types import Dataclass
-
+from rest_framework_dataclasses.types import Dataclass, KWArgs, Metaclass, SerializerField, FieldsOrAllType, FieldsType, \
+    SerializerFieldDefinition
 
 # Define some types to make type hinting more readable
-KWArgs = Dict[str, Any]
-SerializerField = rest_framework.fields.Field
-SerializerFieldDefinition = Tuple[Type[SerializerField], KWArgs]
 T = TypeVar('T', bound=Dataclass)
 AnyT = TypeVar('AnyT')
 
@@ -46,7 +44,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
     """
 
     # The mapping of field types to serializer fields
-    serializer_field_mapping = {
+    serializer_field_mapping: Dict[type, Type[SerializerField]] = {
         int:                rest_framework.fields.IntegerField,
         float:              rest_framework.fields.FloatField,
         bool:               rest_framework.fields.BooleanField,
@@ -60,7 +58,11 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         dict:               rest_framework.fields.DictField,
         list:               rest_framework.fields.ListField
     }
-    serializer_related_field = PrimaryKeyRelatedField
+    serializer_related_field: Type[RelatedField] = PrimaryKeyRelatedField
+
+    Meta: Metaclass
+    dataclass: Optional[type]
+    extra_kwargs: Optional[KWArgs]
 
     # Unfortunately this cannot be an actual field as Python processes the class before it defines the class, but this
     # comes close enough.
@@ -69,13 +71,13 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         return DataclassSerializer
 
     # Type hints
-    _declared_fields: Mapping[str, SerializerField]
+    _declared_fields: Dict[str, SerializerField]
 
     # Override constructor to allow "anonymous" usage by passing the dataclass type and extra kwargs as a constructor
     # parameter instead of via a Meta class.
-    def __init__(self, *args, **kwargs):
-        self.dataclass = kwargs.pop('dataclass', None)
-        self.extra_kwargs = kwargs.pop('extra_kwargs', None)
+    def __init__(self, *args, dataclass: Optional[type] = None, extra_kwargs: Optional[KWArgs] = None, **kwargs):
+        self.dataclass = dataclass
+        self.extra_kwargs = extra_kwargs
         super(DataclassSerializer, self).__init__(*args, **kwargs)
 
     # Parse and validate the configuration to a more usable format
@@ -115,7 +117,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
     # Default `create` and `update` behavior...
 
-    def _strip_empty_sentinels(self, data: AnyT, instance: AnyT = None) -> AnyT:
+    def _strip_empty_sentinels(self, data: AnyT, instance: Any = None) -> AnyT:
         if dataclasses.is_dataclass(data) and not isinstance(data, type):
             values = {field.name: self._strip_empty_sentinels(getattr(data, field.name),
                                                               getattr(instance, field.name, None))
@@ -218,9 +220,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         declared_field_names = self._declared_fields.keys()
 
         # Read configuration from Meta class.
-        meta = getattr(self, 'Meta', None)
-        fields = getattr(meta, 'fields', None)
-        exclude = getattr(meta, 'exclude', None)
+        meta: Metaclass = getattr(self, 'Meta', None)
+        fields: Optional[FieldsOrAllType] = getattr(meta, 'fields', None)
+        exclude: Optional[FieldsType] = getattr(meta, 'exclude', None)
 
         if fields and fields != rest_framework.serializers.ALL_FIELDS and not isinstance(fields, (list, tuple)):
             raise TypeError(
@@ -468,7 +470,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         Create a read only field for dataclass methods and properties.
         """
         field_class = rest_framework.fields.ReadOnlyField
-        field_kwargs = {}
+        field_kwargs: KWArgs = {}
 
         return field_class, field_kwargs
 
@@ -516,12 +518,14 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         """
         Return a dictionary mapping field names to a dictionary of additional keyword arguments.
         """
-        meta = getattr(self, 'Meta', None)
-        extra_kwargs = copy.deepcopy(getattr(meta, 'extra_kwargs', None)) if meta is not None else None
+        meta: Optional[Metaclass] = getattr(self, 'Meta', None)
+        extra_kwargs: Optional[KWArgs] = None
+        if meta is not None:
+            extra_kwargs = copy.deepcopy(getattr(meta, 'extra_kwargs', None))
         if extra_kwargs is None:
             extra_kwargs = self.extra_kwargs or {}
 
-        read_only_fields = getattr(meta, 'read_only_fields', None)
+        read_only_fields: Optional[FieldsType] = getattr(meta, 'read_only_fields', None)
         if read_only_fields is not None:
             if not isinstance(read_only_fields, (list, tuple)):
                 raise TypeError(
