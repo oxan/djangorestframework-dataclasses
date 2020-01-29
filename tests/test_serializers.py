@@ -1,10 +1,12 @@
 import copy
+import dataclasses
 import datetime
 import uuid
 
 from dataclasses import dataclass
 from unittest import TestCase
 
+import typing
 from django.core.exceptions import ImproperlyConfigured
 from rest_framework import fields, serializers
 from rest_framework_dataclasses.serializers import DataclassSerializer
@@ -290,3 +292,20 @@ class ErrorsTestCase(TestCase):
 
         with self.assertRaises(ImproperlyConfigured):
             UnknownSerializer().get_fields()
+
+    def test_unsupported_type(self):
+        datum = dataclasses.make_dataclass('Datum', [('f', complex)])
+        ser = DataclassSerializer(dataclass=datum, data={'f': None})
+
+        msg = "Automatic serializer field deduction not supported for field 'f' on 'Datum' of type '<class 'complex'>'."
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            ser.is_valid(raise_exception=True)
+
+    def test_special_type(self):
+        # _SpecialForm types like Literal, NoReturn don't have an __mro__ attribute
+        datum = dataclasses.make_dataclass('Datum', [('f', typing.NoReturn)])   # type: ignore
+        ser = DataclassSerializer(dataclass=datum, data={'field': True})
+
+        msg = "Automatic serializer field deduction not supported for field 'f' on 'Datum' of type 'typing.NoReturn'."
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            ser.is_valid(raise_exception=True)
