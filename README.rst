@@ -57,6 +57,7 @@ For example, define a dataclass as follows:
         name: str
         email: str
         alive: bool
+        gender: typing.Literal['male', 'female']
         birth_date: typing.Optional[datetime.date]
         phone: typing.List[str]
         movie_ratings: typing.Dict[str, int]
@@ -77,6 +78,7 @@ The serializer for this dataclass can now trivially be defined without having to
         name = fields.CharField()
         email = fields.CharField()
         alive = fields.BooleanField()
+        gender = fields.ChoiceField(choices=['male', 'female'])
         birth_date = fields.DateField(allow_null=True)
         phone = fields.ListField(child=fields.CharField())
         movie_ratings = fields.DictField(child=fields.IntegerField())

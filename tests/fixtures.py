@@ -5,6 +5,12 @@ import uuid
 
 from dataclasses import dataclass
 
+try:
+    # Python 3.8 and later
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
 
 @dataclass
 class Pet:
@@ -18,6 +24,7 @@ class Person:
     name: str
     email: str
     alive: bool
+    gender: Literal['male', 'female', None]
     phone: typing.List[str]
     weight: typing.Optional[float] = None
     birth_date: typing.Optional[datetime.date] = None
@@ -47,6 +54,7 @@ alice = Person(
     name='Alice',
     email='alice@example.com',
     alive=True,
+    gender='female',
     phone=['+31-6-1234-5678', '+31-20-123-4567'],
     weight=55.5,
     birth_date=datetime.date(1980, 4, 1),
@@ -58,6 +66,7 @@ bob = Person(
     name='Bob',
     email='bob@example.com',
     alive=False,
+    gender='male',
     phone=[],
 )
 
@@ -66,6 +75,7 @@ charlie = Person(
     name='Charlie',
     email='charlie@xample.com',
     alive=True,
+    gender='male',
     phone=[]
 )
 
