@@ -122,12 +122,14 @@ class SerializationTestCase(TestCase):
         'phone': person_instance.phone,
         'weight': person_instance.weight,
         'birth_date': person_instance.birth_date.isoformat(),
-        'movie_ratings': person_instance.movie_ratings
+        'movie_ratings': person_instance.movie_ratings,
+        'age': person_instance.age()
     }
 
     class PersonSerializer(DataclassSerializer):
         class Meta:
             dataclass = fixtures.Person
+            fields = (serializers.ALL_FIELDS, 'age')
 
     def test_serialize(self):
         serializer = self.PersonSerializer(instance=self.person_instance)

@@ -31,6 +31,7 @@ class Person:
     movie_ratings: typing.Optional[typing.Dict[str, int]] = None
 
     def age(self) -> int:
+        # don't use current date to keep test deterministic, and we don't care that this calculation is actually wrong.
         return datetime.date(2020, 1, 1).year - self.birth_date.year if self.birth_date else None
 
 
