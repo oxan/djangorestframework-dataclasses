@@ -62,6 +62,15 @@ class TypingTest(TestCase):
         with self.assertRaises(ValueError):
             typing_utils.get_optional_type(str)
 
+    def test_literal_nested(self):
+        try:
+            from typing import Literal
+        except ImportError:
+            raise SkipTest("typing.Literal not supported on current Python")
+
+        self.assertEqual(typing_utils.get_literal_choices(Literal[Literal[Literal[1, 2, 3], "foo"], 5, None]),
+                         [1, 2, 3, "foo", 5, None])
+
     # Make sure we recognize Literal from both 'typing' and 'typing_extensions'
     def test_literal_py38(self):
         try:
@@ -71,7 +80,7 @@ class TypingTest(TestCase):
 
         self.assertTrue(typing_utils.is_literal_type(Literal['a']))
         self.assertEqual(typing_utils.get_literal_choices(Literal['a', 'b', None]),
-                         ('a', 'b', None))
+                         ['a', 'b', None])
 
     def test_literal_extensions(self):
         try:
@@ -81,4 +90,4 @@ class TypingTest(TestCase):
 
         self.assertTrue(typing_utils.is_literal_type(Literal['a']))
         self.assertEqual(typing_utils.get_literal_choices(Literal['a', 'b', None]),
-                         ('a', 'b', None))
+                         ['a', 'b', None])

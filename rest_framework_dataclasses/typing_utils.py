@@ -130,8 +130,16 @@ def is_literal_type(tp: type) -> bool:
             or (isinstance(tp, typing._GenericAlias) and tp.__origin__ is Literal))
 
 
-def get_literal_choices(tp: type) -> tuple:
+def get_literal_choices(tp: type) -> typing.List[typing.Union[str, bytes, int, bool, None]]:
     """
     Return the possible values from a Literal[...] expression.
+    A Literal type may contain other Literals, so need to unnest those.
     """
-    return tp.__args__
+    # For more details: https://www.python.org/dev/peps/pep-0586/#legal-parameters-for-literal-at-type-check-time
+    values = []
+    for value in tp.__args__:
+        if is_literal_type(value):
+            values.extend(get_literal_choices(value))
+        else:
+            values.append(value)
+    return values
