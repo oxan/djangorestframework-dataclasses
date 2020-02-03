@@ -166,47 +166,62 @@ class SerializationTestCase(TestCase):
 
 
 class NestedSerializationTestCase(TestCase):
-    house_dataclass = fixtures.alices_house
-    house_serialized = {
-        'address': house_dataclass.address,
-        'owner': {
-            'id': str(house_dataclass.owner.id),
-            'name': house_dataclass.owner.name,
-            'email': house_dataclass.owner.email,
-            'alive': house_dataclass.owner.alive,
-            'gender': house_dataclass.owner.gender,
-            'phone': house_dataclass.owner.phone,
-            'weight': house_dataclass.owner.weight,
-            'birth_date': house_dataclass.owner.birth_date.isoformat(),
-            'movie_ratings': house_dataclass.owner.movie_ratings
-        },
-        'residents': [
-            {
-                'id': str(house_dataclass.residents[0].id),
-                'name': house_dataclass.residents[0].name,
-                'email': house_dataclass.residents[0].email,
-                'alive': house_dataclass.residents[0].alive,
-                'gender': house_dataclass.residents[0].gender,
-                'phone': house_dataclass.residents[0].phone,
-                'weight': None,
-                'birth_date': None,
-                'movie_ratings': None
+    street_dataclass = fixtures.abbey_road
+    street_serialized = {
+        'name': street_dataclass.name,
+        'length': '7.25',
+        'houses': {
+            '123': {
+                'address': street_dataclass.houses['123'].address,
+                'owner': {
+                    'id': str(street_dataclass.houses['123'].owner.id),
+                    'name': street_dataclass.houses['123'].owner.name,
+                    'email': street_dataclass.houses['123'].owner.email,
+                    'alive': street_dataclass.houses['123'].owner.alive,
+                    'gender': street_dataclass.houses['123'].owner.gender,
+                    'phone': street_dataclass.houses['123'].owner.phone,
+                    'weight': street_dataclass.houses['123'].owner.weight,
+                    'birth_date': street_dataclass.houses['123'].owner.birth_date.isoformat(),
+                    'movie_ratings': street_dataclass.houses['123'].owner.movie_ratings
+                },
+                'residents': [
+                    {
+                        'id': str(street_dataclass.houses['123'].residents[0].id),
+                        'name': street_dataclass.houses['123'].residents[0].name,
+                        'email': street_dataclass.houses['123'].residents[0].email,
+                        'alive': street_dataclass.houses['123'].residents[0].alive,
+                        'gender': street_dataclass.houses['123'].residents[0].gender,
+                        'phone': street_dataclass.houses['123'].residents[0].phone,
+                        'weight': None,
+                        'birth_date': None,
+                        'movie_ratings': None
+                    }
+                ],
+                'room_area': street_dataclass.houses['123'].room_area
             }
-        ],
-        'room_area': house_dataclass.room_area
+        }
     }
 
-    def test_create(self):
-        serializer = DataclassSerializer(dataclass=fixtures.House, data=self.house_serialized)
-        serializer.is_valid(raise_exception=True)
-        house = serializer.save()
+    class StreetSerializer(DataclassSerializer):
+        length = fields.DecimalField(max_digits=3, decimal_places=2)
 
-        self.assertIsInstance(house, fixtures.House)
-        self.assertIsInstance(house.owner, fixtures.Person)
-        self.assertIsInstance(house.residents, list)
-        self.assertIsInstance(house.residents[0], fixtures.Person)
-        self.assertIsInstance(house.room_area, dict)
-        self.assertEqual(house, self.house_dataclass)
+        class Meta:
+            dataclass = fixtures.Street
+
+
+    def test_create(self):
+        serializer = self.StreetSerializer(data=self.street_serialized)
+        serializer.is_valid(raise_exception=True)
+        street = serializer.save()
+
+        self.assertIsInstance(street, fixtures.Street)
+        self.assertIsInstance(street.houses, dict)
+        self.assertIsInstance(street.houses['123'], fixtures.House)
+        self.assertIsInstance(street.houses['123'].owner, fixtures.Person)
+        self.assertIsInstance(street.houses['123'].residents, list)
+        self.assertIsInstance(street.houses['123'].residents[0], fixtures.Person)
+        self.assertIsInstance(street.houses['123'].room_area, dict)
+        self.assertEqual(street, self.street_dataclass)
 
 
 class ErrorsTestCase(TestCase):
