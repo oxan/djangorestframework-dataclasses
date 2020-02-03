@@ -212,24 +212,23 @@ the ``HyperlinkedDataclassSerializer`` class: it generates a ``HyperlinkedRelate
 Nesting with extra kwargs
 -------------------------
 
-``extra_kwargs`` can be nested, in order to provide kwargs to fields belonging to nested models.
+The ``extra_kwargs`` option can be nested, in order to provide kwargs to fields belonging to nested dataclasses.
 Consider the following:
 
-  .. code:: Python
+.. code:: Python
     
     @dataclass
-    class Transaction():
+    class Transaction:
       amount: Decimal
       account_number: str
-      
     
     @dataclass
-    class Company():
+    class Company:
       sales: List[Transaction]
 
-In order to tell DRF to give 2 decimal places to transaction account number, this is how you would write the serializer:
+In order to tell DRF to give 2 decimal places to the transaction account number, write the serializer as follows:
 
-  .. code:: Python
+.. code:: Python
 
     class CompanySerializer(DataclassSerializer):
         class Meta:
@@ -273,6 +272,7 @@ So far, field generation is supported for the following types and their subclass
 * ``uuid.UUID``
 * ``typing.Iterable`` (including ``typing.List``).
 * ``typing.Mapping`` (including ``typing.Dict``).
+* ``typing.Literal`` (mapped to a ``ChoiceField``).
 * ``django.db.Model``
 
 For advanced users, the ``DataclassSerializer`` also exposes an API that you can override in order to alter how
