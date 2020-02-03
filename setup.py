@@ -11,7 +11,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tests.django_settings")
 
 setup(
     name='djangorestframework-dataclasses',
-    version='0.3',
+    version='0.4',
     description='A dataclasses serializer for Django REST Framework',
     long_description=long_description,
     long_description_content_type='text/x-rst',
@@ -28,6 +28,7 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Software Development :: Libraries :: Application Frameworks',
         'Topic :: Software Development :: Libraries :: Python Modules',
