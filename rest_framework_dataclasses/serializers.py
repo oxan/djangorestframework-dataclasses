@@ -104,7 +104,10 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 
             if isinstance(field, DataclassSerializer):
                 value = field.update(getattr(instance, attr), value) if instance else field.create(value)
-            elif isinstance(field, rest_framework.fields.ListField) and isinstance(field.child, DataclassSerializer):
+            elif (isinstance(field, rest_framework.fields.ListField) and
+                  isinstance(field.child, DataclassSerializer) or
+                  isinstance(field, rest_framework.serializers.ListSerializer) and
+                  isinstance(field.child, DataclassSerializer)):
                 value = [field.child.create(item) for item in value]
             elif isinstance(field, rest_framework.fields.DictField) and isinstance(field.child, DataclassSerializer):
                 value = {key: field.child.create(item) for key, item in value.items()}
