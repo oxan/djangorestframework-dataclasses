@@ -1,9 +1,8 @@
 import typing
 
-from unittest import TestCase, SkipTest
+from unittest import TestCase
 
-from rest_framework_dataclasses import typing_utils
-from rest_framework_dataclasses.types import Literal
+from rest_framework_dataclasses import types, typing_utils
 
 
 class TypingTest(TestCase):
@@ -63,11 +62,28 @@ class TypingTest(TestCase):
         with self.assertRaises(ValueError):
             typing_utils.get_optional_type(str)
 
-    def test_literal_nested(self):
-        self.assertEqual(typing_utils.get_literal_choices(Literal[Literal[Literal[1, 2, 3], "foo"], 5, None]),
-                         [1, 2, 3, "foo", 5, None])
-
     def test_literal(self):
-        self.assertTrue(typing_utils.is_literal_type(Literal['a']))
-        self.assertEqual(typing_utils.get_literal_choices(Literal['a', 'b', None]),
-                         ['a', 'b', None])
+        self.assertTrue(typing_utils.is_literal_type(types.Literal['a', 'b']))
+        self.assertTrue(typing_utils.is_literal_type(types.Literal['a', 'b', None]))
+        self.assertTrue(typing_utils.is_literal_type(types.Literal['a', 'b', types.Literal['c', 'd']]))
+        self.assertTrue(typing_utils.is_literal_type(types.Literal['a', 'b', types.Literal['c', 'd', None]]))
+        self.assertTrue(typing_utils.is_literal_type(types.Literal['a', 'b', types.Literal[1, 2]]))
+        self.assertTrue(typing_utils.is_literal_type(types.Literal['a', 'b', types.Literal[1, 2, None]]))
+
+        self.assertFalse(typing_utils.is_optional_type(types.Literal['a', 'b']))
+        self.assertTrue(typing_utils.is_optional_type(types.Literal['a', 'b', None]))
+        self.assertFalse(typing_utils.is_optional_type(types.Literal['a', 'b', types.Literal['c', 'd']]))
+        self.assertTrue(typing_utils.is_optional_type(types.Literal['a', 'b', types.Literal['c', 'd', None]]))
+        self.assertFalse(typing_utils.is_optional_type(types.Literal['a', 'b', types.Literal[1, 2]]))
+        self.assertTrue(typing_utils.is_optional_type(types.Literal['a', 'b', types.Literal[1, 2, None]]))
+
+        self.assertListEqual(typing_utils.get_literal_choices(types.Literal['a', 'b']), ['a', 'b'])
+        self.assertListEqual(typing_utils.get_literal_choices(types.Literal['a', 'b', None]), ['a', 'b', None])
+        self.assertListEqual(typing_utils.get_literal_choices(types.Literal['a', 'b', types.Literal['c', 'd']]),
+                             ['a', 'b', 'c', 'd'])
+        self.assertListEqual(typing_utils.get_literal_choices(types.Literal['a', 'b', types.Literal['c', 'd', None]]),
+                             ['a', 'b', 'c', 'd', None])
+        self.assertListEqual(typing_utils.get_literal_choices(types.Literal['a', 'b', types.Literal[1, 2]]),
+                             ['a', 'b', 1, 2])
+        self.assertListEqual(typing_utils.get_literal_choices(types.Literal['a', 'b', types.Literal[1, 2, None]]),
+                             ['a', 'b', 1, 2, None])

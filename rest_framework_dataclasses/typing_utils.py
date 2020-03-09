@@ -92,18 +92,23 @@ def is_optional_type(tp: type) -> bool:
 
         Optional[int]
         Union[int, None]
+        Literal[0, None]
 
     """
     # All optional type hints satisfy:
     # * Being an instance of the typing._GenericAlias class
     # * Having an __origin__ that is typing.Union
     # * There is exactly one item in __args__ that is not NoneType
+    # except for Literals (sigh), which are just regular Literals with None as an allowed value.
     none_type = type(None)
     return (
         isinstance(tp, typing._GenericAlias) and
         tp.__origin__ is typing.Union and
         any(argument_type is none_type for argument_type in tp.__args__) and
         len([argument_type for argument_type in tp.__args__ if argument_type is not none_type]) == 1
+    ) or (
+        is_literal_type(tp) and
+        None in get_literal_choices(tp)
     )
 
 
@@ -114,12 +119,16 @@ def get_optional_type(tp: type) -> type:
     if not is_optional_type(tp):
         raise ValueError('get_optional_type() called with non-optional type.')
 
+    if is_literal_type(tp):
+        # Note that this doesn't remove `None` as a valid choice, but that's not a problem so far.
+        return tp
+
     return next(argument_type for argument_type in tp.__args__ if argument_type is not type(None))
 
 
 def is_literal_type(tp: type) -> bool:
     """
-    Is this type a Literal[...] expression?
+    Test if the given type is a literal expression.
     """
     # Stolen from typing_inspect
     return (tp is Literal
@@ -128,10 +137,11 @@ def is_literal_type(tp: type) -> bool:
 
 def get_literal_choices(tp: type) -> typing.List[typing.Union[str, bytes, int, bool, None]]:
     """
-    Return the possible values from a Literal[...] expression.
-    A Literal type may contain other Literals, so need to unnest those.
+    Get the possible values for a literal type.
     """
-    # For more details: https://www.python.org/dev/peps/pep-0586/#legal-parameters-for-literal-at-type-check-time
+    # A Literal type may contain other Literals, so need to unnest those. This doesn't happen automatically like it
+    # happens for Unions. For more details, see
+    # https://www.python.org/dev/peps/pep-0586/#legal-parameters-for-literal-at-type-check-time
     values = []
     for value in tp.__args__:
         if is_literal_type(value):

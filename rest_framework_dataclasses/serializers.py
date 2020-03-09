@@ -297,6 +297,10 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         else:
             field_class, field_kwargs = self.build_standard_field(field_name, type_info)
 
+        if type_info.is_optional:
+            field_kwargs['required'] = False
+            field_kwargs['allow_null'] = True
+
         return field_class, field_kwargs
 
     def build_composite_field(self, field_name: str, type_info: TypeInfo,
@@ -316,7 +320,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 
         # Create child field and initialize parent field kwargs
         child_field = child_field_class(**child_field_kwargs)
-        field_kwargs = {'allow_null': type_info.is_optional, 'child': child_field}
+        field_kwargs = {'child': child_field}
 
         if type_info.is_mapping:
             field_class = rest_framework.fields.DictField
@@ -331,7 +335,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         """
         try:
             field_class = field_utils.lookup_type_in_mapping(self.serializer_field_mapping, type_info.base_type)
-            field_kwargs = {'required': type_info.is_optional, 'allow_null': type_info.is_optional}
+            field_kwargs = {}
+
             return field_class, field_kwargs
         except KeyError:
             # When resolving the type hint fails, raise a nice descriptive error based on the outermost type of the
@@ -365,7 +370,6 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         choices = typing_utils.get_literal_choices(type_info.base_type)
         field_kwargs = {
             'choices': [val for val in choices if val not in (None, '')],
-            'allow_null': (None in choices) or type_info.is_optional,
             'allow_blank': '' in choices,
         }
 
@@ -377,8 +381,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         """
         field_class = DataclassSerializer
         field_kwargs = {'dataclass': type_info.base_type,
-                        'many': type_info.is_many,
-                        'allow_null': type_info.is_optional}
+                        'many': type_info.is_many}
 
         return field_class, field_kwargs
 
