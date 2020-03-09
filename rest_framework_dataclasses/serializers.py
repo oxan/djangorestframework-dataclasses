@@ -324,7 +324,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         """
         try:
             field_class = field_utils.lookup_type_in_mapping(self.serializer_field_mapping, type_info.base_type)
-            field_kwargs = {'allow_null': type_info.is_optional}
+            field_kwargs = {'required': type_info.is_optional, 'allow_null': type_info.is_optional}
             return field_class, field_kwargs
         except KeyError:
             # When resolving the type hint fails, raise a nice descriptive error based on the outermost type of the
