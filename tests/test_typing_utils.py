@@ -3,6 +3,7 @@ import typing
 from unittest import TestCase, SkipTest
 
 from rest_framework_dataclasses import typing_utils
+from rest_framework_dataclasses.types import Literal
 
 
 class TypingTest(TestCase):
@@ -63,31 +64,10 @@ class TypingTest(TestCase):
             typing_utils.get_optional_type(str)
 
     def test_literal_nested(self):
-        try:
-            from typing import Literal
-        except ImportError:
-            raise SkipTest("typing.Literal not supported on current Python")
-
         self.assertEqual(typing_utils.get_literal_choices(Literal[Literal[Literal[1, 2, 3], "foo"], 5, None]),
                          [1, 2, 3, "foo", 5, None])
 
-    # Make sure we recognize Literal from both 'typing' and 'typing_extensions'
-    def test_literal_py38(self):
-        try:
-            from typing import Literal
-        except ImportError:
-            raise SkipTest("typing.Literal not supported on current Python")
-
-        self.assertTrue(typing_utils.is_literal_type(Literal['a']))
-        self.assertEqual(typing_utils.get_literal_choices(Literal['a', 'b', None]),
-                         ['a', 'b', None])
-
-    def test_literal_extensions(self):
-        try:
-            from typing_extensions import Literal
-        except ImportError:
-            raise SkipTest("typing_extensions module not installed")
-
+    def test_literal(self):
         self.assertTrue(typing_utils.is_literal_type(Literal['a']))
         self.assertEqual(typing_utils.get_literal_choices(Literal['a', 'b', None]),
                          ['a', 'b', None])

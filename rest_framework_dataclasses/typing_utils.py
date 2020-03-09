@@ -11,11 +11,7 @@ experimental. Maybe for the future.
 import collections
 import typing
 
-try:
-    # Python 3.8 and later
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
+from .types import Literal
 
 
 def is_iterable_type(tp: type) -> bool:

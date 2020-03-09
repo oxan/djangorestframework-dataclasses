@@ -5,11 +5,7 @@ import uuid
 
 from dataclasses import dataclass
 
-try:
-    # Python 3.8 and later
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
+from rest_framework_dataclasses.types import Literal
 
 
 @dataclass
