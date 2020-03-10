@@ -1,123 +1,140 @@
 import copy
+import dataclasses
 import datetime
+import decimal
+import typing
 import uuid
 
 from unittest import TestCase
 
 from rest_framework import fields, serializers
+
 from rest_framework_dataclasses.serializers import DataclassSerializer
-
-from . import fixtures
-
-
-class SerializationTestCase(TestCase):
-    person_instance = fixtures.alice
-    person_serialized = {
-        'id': str(person_instance.id),
-        'name': person_instance.name,
-        'email': person_instance.email,
-        'alive': person_instance.alive,
-        'gender': person_instance.gender,
-        'phone': person_instance.phone,
-        'weight': person_instance.weight,
-        'birth_date': person_instance.birth_date.isoformat(),
-        'movie_ratings': person_instance.movie_ratings,
-        'age': person_instance.age()
-    }
-
-    class PersonSerializer(DataclassSerializer):
-        class Meta:
-            dataclass = fixtures.Person
-            fields = (serializers.ALL_FIELDS, 'age')
-
-    def test_serialize(self):
-        serializer = self.PersonSerializer(instance=self.person_instance)
-        self.assertDictEqual(serializer.data, self.person_serialized)
-
-    def test_deserialize(self):
-        serializer = self.PersonSerializer(data=self.person_serialized)
-        serializer.is_valid(raise_exception=True)
-        result = serializer.validated_data
-
-        self.assertIsInstance(result['id'], uuid.UUID)
-        self.assertIsInstance(result['alive'], bool)
-        self.assertIsInstance(result['weight'], float)
-        self.assertIsInstance(result['birth_date'], datetime.date)
-        self.assertIsInstance(result['movie_ratings'], dict)
-
-    def test_create(self):
-        serializer = self.PersonSerializer(data=self.person_serialized)
-        serializer.is_valid(raise_exception=True)
-        person = serializer.save()
-
-        self.assertIsInstance(person, fixtures.Person)
-        self.assertEqual(person, self.person_instance)
-
-    def test_update(self):
-        instance = copy.deepcopy(fixtures.charlie)
-        serializer = self.PersonSerializer(instance=instance, data=self.person_serialized)
-        serializer.is_valid(raise_exception=True)
-        result = serializer.save()
-
-        self.assertIsInstance(result, fixtures.Person)
-        self.assertIs(result, instance)
-        self.assertEqual(result, self.person_instance)
+from rest_framework_dataclasses.types import Literal
 
 
-class NestedSerializationTestCase(TestCase):
-    street_dataclass = fixtures.abbey_road
-    street_serialized = {
-        'name': street_dataclass.name,
-        'length': '7.25',
-        'houses': {
-            '123': {
-                'address': street_dataclass.houses['123'].address,
-                'owner': {
-                    'id': str(street_dataclass.houses['123'].owner.id),
-                    'name': street_dataclass.houses['123'].owner.name,
-                    'email': street_dataclass.houses['123'].owner.email,
-                    'alive': street_dataclass.houses['123'].owner.alive,
-                    'gender': street_dataclass.houses['123'].owner.gender,
-                    'phone': street_dataclass.houses['123'].owner.phone,
-                    'weight': street_dataclass.houses['123'].owner.weight,
-                    'birth_date': street_dataclass.houses['123'].owner.birth_date.isoformat(),
-                    'movie_ratings': street_dataclass.houses['123'].owner.movie_ratings
-                },
-                'residents': [
-                    {
-                        'id': str(street_dataclass.houses['123'].residents[0].id),
-                        'name': street_dataclass.houses['123'].residents[0].name,
-                        'email': street_dataclass.houses['123'].residents[0].email,
-                        'alive': street_dataclass.houses['123'].residents[0].alive,
-                        'gender': street_dataclass.houses['123'].residents[0].gender,
-                        'phone': street_dataclass.houses['123'].residents[0].phone,
-                        'weight': None,
-                        'birth_date': None,
-                        'movie_ratings': None
-                    }
-                ],
-                'room_area': street_dataclass.houses['123'].room_area
-            }
+@dataclasses.dataclass
+class Pet:
+    animal: Literal['cat', 'dog']
+    name: str
+    weight: typing.Optional[decimal.Decimal] = None
+
+
+@dataclasses.dataclass
+class Person:
+    id: uuid.UUID
+    name: str
+    email: str
+    phone: typing.List[str]
+    pets: typing.Optional[typing.List[Pet]] = None
+    birth_date: typing.Optional[datetime.date] = None
+    favorite_pet: typing.Optional[Pet] = None
+    movie_ratings: typing.Optional[typing.Dict[str, int]] = None
+
+    def age(self) -> int:
+        # don't use current date to keep test deterministic, and we don't care that this calculation is actually wrong.
+        return datetime.date(2020, 1, 1).year - self.birth_date.year if self.birth_date else None
+
+
+class PetSerializer(DataclassSerializer):
+    weight = fields.DecimalField(required=False, allow_null=True, max_digits=4, decimal_places=1)
+
+    class Meta:
+        dataclass = Pet
+
+
+class PersonSerializer(DataclassSerializer):
+    email = fields.EmailField()
+    favorite_pet = PetSerializer(allow_null=True)
+
+    class Meta:
+        dataclass = Person
+        fields = (serializers.ALL_FIELDS, 'age')
+        extra_kwargs = {
+            'id': {'format': 'hex'},
+            'phone': {'child_kwargs': {'max_length': 15}},
+            'pets': {'child_kwargs': {'extra_kwargs': {'weight': {'max_digits': 4, 'decimal_places': 1}}}},
         }
+
+
+# noinspection PyUnresolvedReferences
+class FunctionalTestMixin:
+    def test_serialize(self):
+        serializer = self.serializer(instance=self.instance)
+        self.assertDictEqual(serializer.data, self.representation)
+
+    def test_create(self: TestCase):
+        serializer = self.serializer(data=self.representation)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+
+        self.assertEqual(instance, self.instance)
+
+    def test_update(self: TestCase):
+        empty_instance = copy.deepcopy(self.instance)
+        for field in dataclasses.fields(empty_instance):
+            setattr(empty_instance, field.name, None)
+
+        serializer = self.serializer(instance=empty_instance, data=self.representation)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+
+        self.assertIs(instance, empty_instance)
+        self.assertEqual(instance, self.instance)
+
+
+class PetTest(TestCase, FunctionalTestMixin):
+    serializer = PetSerializer
+    instance = Pet(animal='cat', name='Milo')
+    representation = {'animal': 'cat', 'name': 'Milo', 'weight': None}
+
+
+class PersonTest(TestCase, FunctionalTestMixin):
+    maxDiff = None
+    serializer = PersonSerializer
+    instance = Person(
+        id=uuid.UUID('28ee3ae5-480b-46bd-9ae4-c61cf8341b95'),
+        name='Alice',
+        email='alice@example.com',
+        phone=['+31-6-1234-5678', '+31-20-123-4567'],
+        pets=[Pet(animal='cat', name='Milo', weight=decimal.Decimal('10.8')),
+              Pet(animal='dog', name='Max', weight=decimal.Decimal('123.4'))],
+        birth_date=datetime.date(1980, 4, 1),
+        favorite_pet=Pet(animal='cat', name='Luna', weight=None),
+        movie_ratings={'Star Wars': 8, 'Titanic': 4}
+    )
+    representation = {
+        'id': '28ee3ae5480b46bd9ae4c61cf8341b95',
+        'name': 'Alice',
+        'email': 'alice@example.com',
+        'phone': ['+31-6-1234-5678', '+31-20-123-4567'],
+        'pets': [
+            {'animal': 'cat', 'name': 'Milo', 'weight': '10.8'},
+            {'animal': 'dog', 'name': 'Max', 'weight': '123.4'}
+        ],
+        'birth_date': '1980-04-01',
+        'age': 40,
+        'favorite_pet': {'animal': 'cat', 'name': 'Luna', 'weight': None},
+        'movie_ratings': {'Star Wars': 8, 'Titanic': 4},
     }
 
-    class StreetSerializer(DataclassSerializer):
-        length = fields.DecimalField(max_digits=3, decimal_places=2)
 
-        class Meta:
-            dataclass = fixtures.Street
-
-
-    def test_create(self):
-        serializer = self.StreetSerializer(data=self.street_serialized)
-        serializer.is_valid(raise_exception=True)
-        street = serializer.save()
-
-        self.assertIsInstance(street, fixtures.Street)
-        self.assertIsInstance(street.houses, dict)
-        self.assertIsInstance(street.houses['123'], fixtures.House)
-        self.assertIsInstance(street.houses['123'].owner, fixtures.Person)
-        self.assertIsInstance(street.houses['123'].residents, list)
-        self.assertIsInstance(street.houses['123'].residents[0], fixtures.Person)
-        self.assertIsInstance(street.houses['123'].room_area, dict)
-        self.assertEqual(street, self.street_dataclass)
+class EmptyPersonTest(TestCase, FunctionalTestMixin):
+    serializer = PersonSerializer
+    instance = Person(
+        id=uuid.UUID('28ee3ae5-480b-46bd-9ae4-c61cf8341b95'),
+        name='Alice',
+        email='alice@example.com',
+        phone=[],
+    )
+    representation = {
+        'id': '28ee3ae5480b46bd9ae4c61cf8341b95',
+        'name': 'Alice',
+        'email': 'alice@example.com',
+        'phone': [],
+        'pets': None,
+        'birth_date': None,
+        'age': None,
+        'favorite_pet': None,
+        'movie_ratings': None
+    }
