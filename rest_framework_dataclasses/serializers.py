@@ -114,15 +114,19 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         for attr, value in validated_data.items():
             field = self.fields[attr]
 
-            if isinstance(field, DataclassSerializer):
-                value = field.update(getattr(instance, attr), value) if instance else field.create(value)
+            if value is None:
+                # If the value is None, we don't care about mapping it to the correct dataclass type.
+                pass
+            elif isinstance(field, DataclassSerializer):
+                value = (field.update(getattr(instance, attr), value)
+                         if instance and getattr(instance, attr) else field.create(value))
             elif (isinstance(field, rest_framework.fields.ListField) and
                   isinstance(field.child, DataclassSerializer) or
                   isinstance(field, rest_framework.serializers.ListSerializer) and
                   isinstance(field.child, DataclassSerializer)):
-                value = [field.child.create(item) for item in value]
+                value = [field.child.create(item) if item else None for item in value]
             elif isinstance(field, rest_framework.fields.DictField) and isinstance(field.child, DataclassSerializer):
-                value = {key: field.child.create(item) for key, item in value.items()}
+                value = {key: field.child.create(item) if item else None for key, item in value.items()}
 
             ret[attr] = value
 
