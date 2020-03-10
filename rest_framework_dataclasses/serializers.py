@@ -162,6 +162,12 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         for field_name in field_names:
             # If the field is explicitly declared on the class then use that.
             if field_name in declared_fields:
+                assert field_name not in extra_kwargs, (
+                    "Cannot both declare the field '{field_name}' and include it in '{serializer_class}' "
+                    "`extra_kwargs` or `read_only_fields` option. Move all options to the field declaration."
+                    .format(field_name=field_name, serializer_class=self.__class__.__name__)
+                )
+
                 fields[field_name] = declared_fields[field_name]
                 continue
 
