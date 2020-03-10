@@ -407,11 +407,14 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
             .format(field_name=field_name, class_name=self.dataclass_definition.dataclass_type.__name__)
         )
 
+    # Methods for determining additional keyword arguments to apply...
+
     def include_extra_kwargs(self, kwargs: KWArgs, extra_kwargs: KWArgs) -> KWArgs:
         """
-        Include any 'extra_kwargs' that have been included for this field, possibly removing any incompatible existing
+        Include any `extra_kwargs` that have been included for this field, possibly removing any incompatible existing
         keyword arguments.
         """
+        # If the field is made read only, drop write-only related arguments.
         if extra_kwargs.get('read_only', False):
             for attr in [
                 'required', 'default', 'allow_blank', 'allow_null',
@@ -420,20 +423,20 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
             ]:
                 kwargs.pop(attr, None)
 
+        # If `default` is specified, `required` may not be specified. If the field is not explicitly specified as not
+        # required (the behaviour of `default`), remove that specification.
         if extra_kwargs.get('default') and kwargs.get('required') is False:
             kwargs.pop('required')
 
         if extra_kwargs.get('read_only', kwargs.get('read_only', False)):
             extra_kwargs.pop('required', None)  # Read only fields should always omit the 'required' argument.
 
-        if extra_kwargs.get('child_kwargs', None):
+        if 'child_kwargs' in extra_kwargs:
             extra_kwargs.pop('child_kwargs', None)  # Always drop the child_kwargs field, as it's applied manually
 
         kwargs.update(extra_kwargs)
 
         return kwargs
-
-    # Methods for determining additional keyword arguments to apply...
 
     def get_extra_kwargs(self) -> KWArgs:
         """
