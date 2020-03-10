@@ -4,13 +4,13 @@ import datetime
 import decimal
 import uuid
 from collections import OrderedDict
-from typing import List, Type, Dict, Any, Tuple, Mapping, NoReturn
+from typing import List, Type, Dict, Any, Tuple, Mapping
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model
+from django.utils.functional import cached_property
 import rest_framework.fields
 import rest_framework.serializers
-from django.utils.functional import cached_property
 from rest_framework.relations import PrimaryKeyRelatedField, HyperlinkedRelatedField
 from rest_framework.utils.field_mapping import get_relation_kwargs
 
