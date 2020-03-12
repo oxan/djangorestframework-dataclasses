@@ -62,9 +62,6 @@ For example, define a dataclass as follows:
         phone: typing.List[str]
         movie_ratings: typing.Dict[str, int]
 
-        def age(self) -> int:
-            return datetime.date.today().year - self.birth_date.year
-
 The serializer for this dataclass can now trivially be defined without having to duplicate all fields:
 
 .. code:: Python
@@ -79,7 +76,7 @@ The serializer for this dataclass can now trivially be defined without having to
         email = fields.CharField()
         alive = fields.BooleanField()
         gender = fields.ChoiceField(choices=['male', 'female'])
-        birth_date = fields.DateField(allow_null=True)
+        birth_date = fields.DateField(required=False, allow_null=True)
         phone = fields.ListField(child=fields.CharField())
         movie_ratings = fields.DictField(child=fields.IntegerField())
 
@@ -172,7 +169,7 @@ This will serialize as:
     }
 
 This does not give the option to customize the field generation of the nested dataclasses. If that is needed, you
-should declare the serializer to be used explicitly.
+should declare the serializer to be used explicitly on the field.
 
 Likewise, if your dataclass has a field that contains a Django model, the ``DataclassSerializer`` will automatically
 generate a relational field for you.
@@ -219,12 +216,12 @@ Consider the following:
     
     @dataclass
     class Transaction:
-      amount: Decimal
-      account_number: str
+       amount: Decimal
+       account_number: str
     
     @dataclass
     class Company:
-      sales: List[Transaction]
+       sales: List[Transaction]
 
 In order to tell DRF to give 2 decimal places to the transaction account number, write the serializer as follows:
 
