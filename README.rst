@@ -46,7 +46,7 @@ class, except that:
 * It will automatically generate fields for you, based on the declaration in the dataclass.
 * To make this possible it requires that a ``dataclass`` property is specified in the ``Meta`` subclass, with as value
   a dataclass that has type annotations.
-* It includes simple default implementations of ``.create()`` and ``.update()``.
+* It includes default implementations of ``.create()`` and ``.update()``.
 
 For example, define a dataclass as follows:
 
