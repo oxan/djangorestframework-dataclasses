@@ -99,47 +99,43 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 
     # Default `create` and `update` behavior...
 
-    def instantiate_data_dictionaries(self, validated_data, instance=None):
-        """
-        Instantiate the values in a deserialized data dictionaries to their respective classes (for now only nested
-        dataclasses).
-        """
-        # I'm not sure this is actually the best way to deserialize into nested dataclasses. The cleanest way seems to
-        # be overriding to_internal_value(), but the top-level serializer must return a dictionary from that method. We
-        # could split nested dataclasses off into a separate DataclassField (which could in general clean-up the code a
-        # bit), but that breaks specifying nested serializers using a single class. Let's use this ugly hack until I can
-        # think of something better.
-
-        ret = {}
-        for attr, value in validated_data.items():
-            field = self.fields[attr]
-
-            if value is None:
-                # If the value is None, we don't care about mapping it to the correct dataclass type.
-                pass
-            elif isinstance(field, DataclassSerializer):
-                value = (field.update(getattr(instance, attr), value)
-                         if instance and getattr(instance, attr) else field.create(value))
-            elif (isinstance(field, rest_framework.fields.ListField) and
-                  isinstance(field.child, DataclassSerializer) or
-                  isinstance(field, rest_framework.serializers.ListSerializer) and
-                  isinstance(field.child, DataclassSerializer)):
-                value = [field.child.create(item) if item else None for item in value]
-            elif isinstance(field, rest_framework.fields.DictField) and isinstance(field.child, DataclassSerializer):
-                value = {key: field.child.create(item) if item else None for key, item in value.items()}
-
-            ret[attr] = value
-
-        return ret
-
     def create(self, validated_data):
-        dataclass_type = self.dataclass_definition.dataclass_type
-        return dataclass_type(**self.instantiate_data_dictionaries(validated_data))
+        return validated_data
 
     def update(self, instance, validated_data):
-        for attr, value in self.instantiate_data_dictionaries(validated_data, instance).items():
-            setattr(instance, attr, value)
+        for name, field in self.dataclass_definition.fields.items():
+            # This is slightly ugly, as it doesn't make a distinction between missing fields and the default value.
+            if getattr(validated_data, name) != field.default:
+                setattr(instance, name, getattr(validated_data, name))
         return instance
+
+    def save(self, **kwargs):
+        assert hasattr(self, '_errors'), (
+            "You must call `.is_valid()` before calling `.save()`."
+        )
+
+        assert not self.errors, (
+            "You cannot call `.save()` on a serializer with invalid data."
+        )
+
+        assert not hasattr(self, '_data'), (
+            "You cannot call `.save()` after accessing `serializer.data`."
+            "If you need to access data before committing to the dataclass then "
+            "inspect 'serializer.validated_data' instead. "
+        )
+
+        validated_data = dataclasses.replace(self.validated_data, **kwargs)
+
+        if self.instance is not None:
+            self.instance = self.update(self.instance, validated_data)
+        else:
+            self.instance = self.create(validated_data)
+
+        assert self.instance is not None, (
+            '`update()` or `create()` did not return an object instance.'
+        )
+
+        return self.instance
 
     # Determine the fields to apply...
 
@@ -214,18 +210,23 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         if fields is None or fields == rest_framework.serializers.ALL_FIELDS:
             fields = [rest_framework.serializers.ALL_FIELDS]
 
-        if rest_framework.serializers.ALL_FIELDS not in fields:
-            # If fields are explicitly specified, and it is not the all fields magic option, ensure that all included
-            # fields are valid.
-            for field_name in fields:
-                assert field_name in self.dataclass_definition.fields or field_name in declared_fields, (
-                    "The field '{field_name}' was included on serializer {serializer_class} in the `fields` option, "
-                    "but does not match any dataclass field."
-                    .format(field_name=field_name, serializer_class=self.__class__.__name__)
-                )
+        # For explicitly specified fields, ensure that they are valid.
+        for field_name in fields:
+            assert (
+                field_name == rest_framework.serializers.ALL_FIELDS or                         # all fields magic option
+                field_name in self.dataclass_definition.fields or                              # dataclass fields
+                field_name in declared_fields or                                               # declared fields
+                callable(getattr(self.dataclass_definition.dataclass_type, field_name, None))  # methods
+            ), (
+                "The field '{field_name}' was included on serializer {serializer_class} in the `fields` option, "
+                "but does not match any dataclass field."
+                .format(field_name=field_name, serializer_class=self.__class__.__name__)
+            )
 
-            # Also ensure that all declared fields are included. Do not require any fields that are declared in a parent
-            # class, in order to allow serializer subclasses to only include a subset of fields.
+        if rest_framework.serializers.ALL_FIELDS not in fields:
+            # If there are only explicitly specified fields, ensure that all declared fields are included. Do not
+            # require any fields that are declared in a parent class, in order to allow serializer subclasses to only
+            # include a subset of fields.
             required_field_names = set(declared_fields)
             for cls in self.__class__.__bases__:
                 required_field_names -= set(getattr(cls, '_declared_fields', []))
@@ -236,7 +237,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
                     "included in the `fields` option."
                     .format(field_name=field_name, serializer_class=self.__class__.__name__)
                 )
-            return fields
+            return list(fields)
 
         # The field list now includes the magic all fields option, so replace it with the default field names.
         fields = list(fields)
@@ -481,6 +482,16 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
             )
 
         return extra_kwargs
+
+    # Methods to convert between internal normalized value and serialized representation.
+
+    def to_internal_value(self, data):
+        """
+        Convert a dictionary representation of the dataclass containing only primitive values to a dataclass instance.
+        """
+        native_values = super(DataclassSerializer, self).to_internal_value(data)
+        dataclass_type = self.dataclass_definition.dataclass_type
+        return dataclass_type(**native_values)
 
 
 class HyperlinkedDataclassSerializer(DataclassSerializer):

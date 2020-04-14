@@ -62,15 +62,55 @@ class SerializerTest(TestCase):
         with self.assertRaises(ValueError):
             definition = self.create_serializer(str).dataclass_definition
 
-    def test_create_update(self):
+    def test_save(self):
+        def mock_person_serializer(data, instance=None):
+            serializer = self.create_serializer(Person)
+            serializer._errors = []
+            serializer._validated_data = data
+            if instance:
+                serializer.instance = instance
+            return serializer
+
+        alice = Person(name='Alice', length=123)
+
+        # regular create
+        ser = mock_person_serializer(alice)
+        self.assertEqual(ser.save(), alice)
+
+        # regular update
+        inst = dataclasses.replace(alice)
+        ser = mock_person_serializer(alice, instance=inst)
+        self.assertIs(ser.save(), inst)
+        self.assertEqual(ser.save(), alice)
+
+        # create with kwargs
+        ser = mock_person_serializer(alice)
+        self.assertEqual(ser.save(length=456), dataclasses.replace(alice, length=456))
+
+        # update with kwargs
+        inst = dataclasses.replace(alice)
+        ser = mock_person_serializer(alice, instance=inst)
+        self.assertIs(ser.save(length=456), inst)
+        self.assertEqual(ser.save(length=456), dataclasses.replace(alice, length=456))
+
+        # not validated
+        with self.assertRaises(AssertionError):
+            self.create_serializer(Person).save()
+
+    def test_nested_save(self):
         def check(dataclass, representation, instance):
             empty_instance = copy.deepcopy(instance)
             for field in dataclasses.fields(empty_instance):
                 setattr(empty_instance, field.name, None)
 
-            serializer = self.create_serializer(dataclass)
-            self.assertEqual(serializer.create(representation), instance)
-            self.assertEqual(serializer.update(empty_instance, representation), instance)
+            serializer = self.create_serializer(dataclass, arguments={'data': representation})
+            self.assertTrue(serializer.is_valid(raise_exception=False))
+            self.assertEqual(serializer.save(), instance)
+
+            serializer = self.create_serializer(dataclass, arguments={'data': representation,
+                                                                      'instance': empty_instance})
+            self.assertTrue(serializer.is_valid(raise_exception=False))
+            self.assertEqual(serializer.save(), instance)
 
         # simple dataclass with a single field
         simple = dataclasses.make_dataclass('child', [('value', str)])
@@ -164,6 +204,8 @@ class SerializerTest(TestCase):
               ['name', 'length', 'birth_date'])
         check(self.create_serializer(Person, meta={'fields': (serializers.ALL_FIELDS, 'age')}),
               ['age', 'name', 'length', 'birth_date'])
+        check(self.create_serializer(Person, meta={'fields': ('age', )}),
+              ['age'])
         check(self.create_serializer(Person, meta={'exclude': ['name']}),
               ['length', 'birth_date'])
         check(self.create_serializer(Person, declared={'age': fields.ReadOnlyField()}),
@@ -255,3 +297,14 @@ class SerializerTest(TestCase):
 
         with self.assertRaises(AssertionError):
             self.create_serializer(meta={'readonly_fields': ['name']}).get_extra_kwargs()
+
+    def test_to_internal_representation(self):
+        # simple
+        self.assertEqual(self.create_serializer(Person).to_internal_value({'name': 'Alice', 'length': 123}),
+                         Person(name='Alice', length=123))
+
+        # nested
+        simple = dataclasses.make_dataclass('child', [('value', str)])
+        parent = dataclasses.make_dataclass('parent', [('container', simple)])
+        self.assertEqual(self.create_serializer(parent).to_internal_value({'container': {'value': 'a'}}),
+                         parent(container=simple(value='a')))
