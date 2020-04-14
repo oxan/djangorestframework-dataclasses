@@ -210,18 +210,23 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         if fields is None or fields == rest_framework.serializers.ALL_FIELDS:
             fields = [rest_framework.serializers.ALL_FIELDS]
 
-        if rest_framework.serializers.ALL_FIELDS not in fields:
-            # If fields are explicitly specified, and it is not the all fields magic option, ensure that all included
-            # fields are valid.
-            for field_name in fields:
-                assert field_name in self.dataclass_definition.fields or field_name in declared_fields, (
-                    "The field '{field_name}' was included on serializer {serializer_class} in the `fields` option, "
-                    "but does not match any dataclass field."
-                    .format(field_name=field_name, serializer_class=self.__class__.__name__)
-                )
+        # For explicitly specified fields, ensure that they are valid.
+        for field_name in fields:
+            assert (
+                field_name == rest_framework.serializers.ALL_FIELDS or                         # all fields magic option
+                field_name in self.dataclass_definition.fields or                              # dataclass fields
+                field_name in declared_fields or                                               # declared fields
+                callable(getattr(self.dataclass_definition.dataclass_type, field_name, None))  # methods
+            ), (
+                "The field '{field_name}' was included on serializer {serializer_class} in the `fields` option, "
+                "but does not match any dataclass field."
+                .format(field_name=field_name, serializer_class=self.__class__.__name__)
+            )
 
-            # Also ensure that all declared fields are included. Do not require any fields that are declared in a parent
-            # class, in order to allow serializer subclasses to only include a subset of fields.
+        if rest_framework.serializers.ALL_FIELDS not in fields:
+            # If there are only explicitly specified fields, ensure that all declared fields are included. Do not
+            # require any fields that are declared in a parent class, in order to allow serializer subclasses to only
+            # include a subset of fields.
             required_field_names = set(declared_fields)
             for cls in self.__class__.__bases__:
                 required_field_names -= set(getattr(cls, '_declared_fields', []))
@@ -232,7 +237,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
                     "included in the `fields` option."
                     .format(field_name=field_name, serializer_class=self.__class__.__name__)
                 )
-            return fields
+            return list(fields)
 
         # The field list now includes the magic all fields option, so replace it with the default field names.
         fields = list(fields)

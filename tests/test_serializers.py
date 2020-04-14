@@ -204,6 +204,8 @@ class SerializerTest(TestCase):
               ['name', 'length', 'birth_date'])
         check(self.create_serializer(Person, meta={'fields': (serializers.ALL_FIELDS, 'age')}),
               ['age', 'name', 'length', 'birth_date'])
+        check(self.create_serializer(Person, meta={'fields': ('age', )}),
+              ['age'])
         check(self.create_serializer(Person, meta={'exclude': ['name']}),
               ['length', 'birth_date'])
         check(self.create_serializer(Person, declared={'age': fields.ReadOnlyField()}),
