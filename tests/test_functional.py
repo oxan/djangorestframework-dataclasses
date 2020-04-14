@@ -44,12 +44,14 @@ class PetSerializer(DataclassSerializer):
 
 
 class PersonSerializer(DataclassSerializer):
+    full_name = fields.CharField(source='name')
     email = fields.EmailField()
     favorite_pet = PetSerializer(allow_null=True)
+    slug = fields.SlugField(source='name', read_only=True)
 
     class Meta:
         dataclass = Person
-        fields = (serializers.ALL_FIELDS, 'age')
+        fields = ('id', 'full_name', 'email', 'phone', 'pets', 'birth_date', 'favorite_pet', 'movie_ratings', 'slug', 'age')
         extra_kwargs = {
             'id': {'format': 'hex'},
             'phone': {'child_kwargs': {'max_length': 15}},
@@ -61,7 +63,7 @@ class PersonSerializer(DataclassSerializer):
 class FunctionalTestMixin:
     def test_serialize(self):
         serializer = self.serializer(instance=self.instance)
-        self.assertDictEqual(serializer.data, self.representation)
+        self.assertDictEqual(serializer.data, {**self.representation, **self.representation_readonly})
 
     def test_create(self: TestCase):
         serializer = self.serializer(data=self.representation)
@@ -87,6 +89,7 @@ class PetTest(TestCase, FunctionalTestMixin):
     serializer = PetSerializer
     instance = Pet(animal='cat', name='Milo')
     representation = {'animal': 'cat', 'name': 'Milo', 'weight': None}
+    representation_readonly = {}
 
 
 class PersonTest(TestCase, FunctionalTestMixin):
@@ -105,7 +108,7 @@ class PersonTest(TestCase, FunctionalTestMixin):
     )
     representation = {
         'id': '28ee3ae5480b46bd9ae4c61cf8341b95',
-        'name': 'Alice',
+        'full_name': 'Alice',
         'email': 'alice@example.com',
         'phone': ['+31-6-1234-5678', '+31-20-123-4567'],
         'pets': [
@@ -116,6 +119,9 @@ class PersonTest(TestCase, FunctionalTestMixin):
         'age': 40,
         'favorite_pet': {'animal': 'cat', 'name': 'Luna', 'weight': None},
         'movie_ratings': {'Star Wars': 8, 'Titanic': 4},
+    }
+    representation_readonly = {
+        'slug': 'Alice'
     }
 
 
@@ -129,7 +135,7 @@ class EmptyPersonTest(TestCase, FunctionalTestMixin):
     )
     representation = {
         'id': '28ee3ae5480b46bd9ae4c61cf8341b95',
-        'name': 'Alice',
+        'full_name': 'Alice',
         'email': 'alice@example.com',
         'phone': [],
         'pets': None,
@@ -137,4 +143,7 @@ class EmptyPersonTest(TestCase, FunctionalTestMixin):
         'age': None,
         'favorite_pet': None,
         'movie_ratings': None
+    }
+    representation_readonly = {
+        'slug': 'Alice'
     }
