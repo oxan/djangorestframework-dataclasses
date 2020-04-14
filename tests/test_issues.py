@@ -3,6 +3,7 @@ import typing
 
 from unittest import TestCase
 
+from rest_framework import fields
 from rest_framework_dataclasses.serializers import DataclassSerializer
 
 
@@ -48,3 +49,16 @@ class IssuesTest(TestCase):
             nested = SimpleSerializer(allow_null=True, required=False)
 
         self.check_deserialize(ParentSerializer, dataclass=parent, data=data)
+
+    # Issue #19: create() breaks with source parameter
+    def test_create_source(self):
+        data = {'renamed_value': 'a'}
+
+        class SimpleRenamedSerializer(DataclassSerializer):
+            renamed_value = fields.CharField(source='value')
+
+            class Meta:
+                dataclass = Simple
+                fields = ('renamed_value', )
+
+        self.check_deserialize(SimpleRenamedSerializer, data=data)
