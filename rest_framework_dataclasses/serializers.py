@@ -99,47 +99,43 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 
     # Default `create` and `update` behavior...
 
-    def instantiate_data_dictionaries(self, validated_data, instance=None):
-        """
-        Instantiate the values in a deserialized data dictionaries to their respective classes (for now only nested
-        dataclasses).
-        """
-        # I'm not sure this is actually the best way to deserialize into nested dataclasses. The cleanest way seems to
-        # be overriding to_internal_value(), but the top-level serializer must return a dictionary from that method. We
-        # could split nested dataclasses off into a separate DataclassField (which could in general clean-up the code a
-        # bit), but that breaks specifying nested serializers using a single class. Let's use this ugly hack until I can
-        # think of something better.
-
-        ret = {}
-        for attr, value in validated_data.items():
-            field = self.fields[attr]
-
-            if value is None:
-                # If the value is None, we don't care about mapping it to the correct dataclass type.
-                pass
-            elif isinstance(field, DataclassSerializer):
-                value = (field.update(getattr(instance, attr), value)
-                         if instance and getattr(instance, attr) else field.create(value))
-            elif (isinstance(field, rest_framework.fields.ListField) and
-                  isinstance(field.child, DataclassSerializer) or
-                  isinstance(field, rest_framework.serializers.ListSerializer) and
-                  isinstance(field.child, DataclassSerializer)):
-                value = [field.child.create(item) if item else None for item in value]
-            elif isinstance(field, rest_framework.fields.DictField) and isinstance(field.child, DataclassSerializer):
-                value = {key: field.child.create(item) if item else None for key, item in value.items()}
-
-            ret[attr] = value
-
-        return ret
-
     def create(self, validated_data):
-        dataclass_type = self.dataclass_definition.dataclass_type
-        return dataclass_type(**self.instantiate_data_dictionaries(validated_data))
+        return validated_data
 
     def update(self, instance, validated_data):
-        for attr, value in self.instantiate_data_dictionaries(validated_data, instance).items():
-            setattr(instance, attr, value)
+        for name, field in self.dataclass_definition.fields.items():
+            # This is slightly ugly, as it doesn't make a distinction between missing fields and the default value.
+            if getattr(validated_data, name) != field.default:
+                setattr(instance, name, getattr(validated_data, name))
         return instance
+
+    def save(self, **kwargs):
+        assert hasattr(self, '_errors'), (
+            "You must call `.is_valid()` before calling `.save()`."
+        )
+
+        assert not self.errors, (
+            "You cannot call `.save()` on a serializer with invalid data."
+        )
+
+        assert not hasattr(self, '_data'), (
+            "You cannot call `.save()` after accessing `serializer.data`."
+            "If you need to access data before committing to the dataclass then "
+            "inspect 'serializer.validated_data' instead. "
+        )
+
+        validated_data = dataclasses.replace(self.validated_data, **kwargs)
+
+        if self.instance is not None:
+            self.instance = self.update(self.instance, validated_data)
+        else:
+            self.instance = self.create(validated_data)
+
+        assert self.instance is not None, (
+            '`update()` or `create()` did not return an object instance.'
+        )
+
+        return self.instance
 
     # Determine the fields to apply...
 
@@ -481,6 +477,16 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
             )
 
         return extra_kwargs
+
+    # Methods to convert between internal normalized value and serialized representation.
+
+    def to_internal_value(self, data):
+        """
+        Convert a dictionary representation of the dataclass containing only primitive values to a dataclass instance.
+        """
+        native_values = super(DataclassSerializer, self).to_internal_value(data)
+        dataclass_type = self.dataclass_definition.dataclass_type
+        return dataclass_type(**native_values)
 
 
 class HyperlinkedDataclassSerializer(DataclassSerializer):

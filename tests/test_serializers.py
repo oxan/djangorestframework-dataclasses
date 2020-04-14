@@ -62,15 +62,20 @@ class SerializerTest(TestCase):
         with self.assertRaises(ValueError):
             definition = self.create_serializer(str).dataclass_definition
 
-    def test_create_update(self):
+    def test_nested_save(self):
         def check(dataclass, representation, instance):
             empty_instance = copy.deepcopy(instance)
             for field in dataclasses.fields(empty_instance):
                 setattr(empty_instance, field.name, None)
 
-            serializer = self.create_serializer(dataclass)
-            self.assertEqual(serializer.create(representation), instance)
-            self.assertEqual(serializer.update(empty_instance, representation), instance)
+            serializer = self.create_serializer(dataclass, arguments={'data': representation})
+            self.assertTrue(serializer.is_valid(raise_exception=False))
+            self.assertEqual(serializer.save(), instance)
+
+            serializer = self.create_serializer(dataclass, arguments={'data': representation,
+                                                                      'instance': empty_instance})
+            self.assertTrue(serializer.is_valid(raise_exception=False))
+            self.assertEqual(serializer.save(), instance)
 
         # simple dataclass with a single field
         simple = dataclasses.make_dataclass('child', [('value', str)])
