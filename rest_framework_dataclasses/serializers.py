@@ -4,7 +4,7 @@ import datetime
 import decimal
 import uuid
 from collections import OrderedDict
-from typing import List, Type, Dict, Any, Tuple, Mapping
+from typing import Generic, List, Type, Dict, Any, Tuple, TypeVar, Mapping
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model
@@ -16,16 +16,18 @@ from rest_framework.utils.field_mapping import get_relation_kwargs
 
 from rest_framework_dataclasses import field_utils, typing_utils
 from rest_framework_dataclasses.field_utils import DataclassDefinition, get_dataclass_definition, TypeInfo
+from rest_framework_dataclasses.types import Dataclass
 
 
 # Define some types to make type hinting more readable
-SerializerField = rest_framework.fields.Field
 KWArgs = Dict[str, Any]
+SerializerField = rest_framework.fields.Field
 SerializerFieldDefinition = Tuple[Type[SerializerField], KWArgs]
+T = TypeVar('T', bound=Dataclass)
 
 
 # noinspection PyMethodMayBeStatic
-class DataclassSerializer(rest_framework.serializers.Serializer):
+class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
     """
     A `DataclassSerializer` is just a regular `Serializer`, except that:
 
@@ -99,10 +101,10 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 
     # Default `create` and `update` behavior...
 
-    def create(self, validated_data):
+    def create(self, validated_data: T) -> T:
         return validated_data
 
-    def update(self, instance, validated_data):
+    def update(self, instance: T, validated_data: T) -> T:
         for name, field in self.dataclass_definition.fields.items():
             # Don't overwrite fields that weren't present in the serialized representation.
             # noinspection PyProtectedMember
@@ -111,7 +113,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 
         return instance
 
-    def save(self, **kwargs):
+    def save(self, **kwargs) -> T:
         assert hasattr(self, '_errors'), (
             "You must call `.is_valid()` before calling `.save()`."
         )
@@ -271,8 +273,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 
         return fields
 
-    def get_default_field_names(self, declared_fields: Mapping[str, SerializerField]) \
-            -> List[str]:
+    def get_default_field_names(self, declared_fields: Mapping[str, SerializerField]) -> List[str]:
         """
         Return the default list of field names that will be used if the `Meta.fields` option is not specified.
         """
@@ -492,7 +493,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 
     # Methods to convert between internal normalized value and serialized representation.
 
-    def to_internal_value(self, data: dict):
+    def to_internal_value(self, data: Dict[str, Any]) -> T:
         """
         Convert a dictionary representation of the dataclass containing only primitive values to a dataclass instance.
         """
