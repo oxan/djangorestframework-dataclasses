@@ -104,9 +104,11 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 
     def update(self, instance, validated_data):
         for name, field in self.dataclass_definition.fields.items():
-            # This is slightly ugly, as it doesn't make a distinction between missing fields and the default value.
-            if getattr(validated_data, name) != field.default:
+            # Don't overwrite fields that weren't present in the serialized representation.
+            # noinspection PyProtectedMember
+            if name not in validated_data._unsupplied_fields:
                 setattr(instance, name, getattr(validated_data, name))
+
         return instance
 
     def save(self, **kwargs):
@@ -127,8 +129,13 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
         validated_data = dataclasses.replace(self.validated_data, **kwargs)
 
         if self.instance is not None:
+            # Remove fields supplied by kwargs from the list of unsupplied fields that shouldn't be overwritten.
+            # noinspection PyProtectedMember
+            validated_data._unsupplied_fields = [f for f in self.validated_data._unsupplied_fields if f not in kwargs]
+
             self.instance = self.update(self.instance, validated_data)
         else:
+            # We don't need to bother with unsupplied fields here, as there's nothing to overwrite anyway.
             self.instance = self.create(validated_data)
 
         assert self.instance is not None, (
@@ -485,13 +492,19 @@ class DataclassSerializer(rest_framework.serializers.Serializer):
 
     # Methods to convert between internal normalized value and serialized representation.
 
-    def to_internal_value(self, data):
+    def to_internal_value(self, data: dict):
         """
         Convert a dictionary representation of the dataclass containing only primitive values to a dataclass instance.
         """
         native_values = super(DataclassSerializer, self).to_internal_value(data)
         dataclass_type = self.dataclass_definition.dataclass_type
-        return dataclass_type(**native_values)
+        instance = dataclass_type(**native_values)
+
+        # Keep a list of the fields that have not been supplied in the serialized representation, so that we can avoid
+        # overwriting existing values for them in update().
+        instance._unsupplied_fields = [f for f in self.dataclass_definition.fields.keys() if f not in native_values]
+
+        return instance
 
 
 class HyperlinkedDataclassSerializer(DataclassSerializer):

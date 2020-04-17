@@ -67,6 +67,8 @@ class SerializerTest(TestCase):
             serializer = self.create_serializer(Person)
             serializer._errors = []
             serializer._validated_data = data
+            if not hasattr(serializer._validated_data, '_unsupplied_fields'):
+                serializer._validated_data._unsupplied_fields = []
             if instance:
                 serializer.instance = instance
             return serializer
@@ -88,10 +90,24 @@ class SerializerTest(TestCase):
         self.assertEqual(ser.save(length=456), dataclasses.replace(alice, length=456))
 
         # update with kwargs
-        inst = dataclasses.replace(alice)
+        inst = dataclasses.replace(alice, name='Bob', length=789)
         ser = mock_person_serializer(alice, instance=inst)
         self.assertIs(ser.save(length=456), inst)
         self.assertEqual(ser.save(length=456), dataclasses.replace(alice, length=456))
+
+        # full update with set of field to default value
+        inst = dataclasses.replace(alice, birth_date=datetime.datetime(2020, 2, 2))
+        ser = mock_person_serializer(alice, instance=inst)
+        self.assertIs(ser.save(), inst)
+        self.assertEqual(ser.save().birth_date, None)
+
+        # partial update with missing optional field
+        data = dataclasses.replace(alice)
+        data._unsupplied_fields = ["birth_date"]
+        inst = dataclasses.replace(alice, birth_date=datetime.datetime(2020, 2, 2))
+        ser = mock_person_serializer(data, instance=inst)
+        self.assertIs(ser.save(), inst)
+        self.assertEqual(ser.save().birth_date, datetime.datetime(2020, 2, 2))
 
         # not validated
         with self.assertRaises(AssertionError):
@@ -299,9 +315,17 @@ class SerializerTest(TestCase):
             self.create_serializer(meta={'readonly_fields': ['name']}).get_extra_kwargs()
 
     def test_to_internal_representation(self):
+        ser = self.create_serializer(Person)
+
         # simple
-        self.assertEqual(self.create_serializer(Person).to_internal_value({'name': 'Alice', 'length': 123}),
-                         Person(name='Alice', length=123))
+        value = ser.to_internal_value({'name': 'Alice', 'length': 123, 'birth_date': '2020-02-02'})
+        self.assertEqual(value, Person(name='Alice', length=123, birth_date=datetime.date(2020, 2, 2)))
+        self.assertEqual(value._unsupplied_fields, [])
+
+        # unsupplied fields
+        value = ser.to_internal_value({'name': 'Alice', 'length': 123})
+        self.assertEqual(value, Person(name='Alice', length=123))
+        self.assertEqual(value._unsupplied_fields, ["birth_date"])
 
         # nested
         simple = dataclasses.make_dataclass('child', [('value', str)])
