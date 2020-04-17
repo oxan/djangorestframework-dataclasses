@@ -1,9 +1,11 @@
-language: python
+os: linux
+dist: bionic
 
+language: python
 python:
   - "3.7"
   - "3.8"
-  - "3.9"
+  - "3.9-dev"
 
 install: pip install tox-travis codecov
 script: tox
