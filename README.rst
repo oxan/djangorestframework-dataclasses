@@ -29,6 +29,11 @@ Installation
 
     $ pip install djangorestframework-dataclasses
 
+Changes
+-------
+
+See `CHANGELOG.rst <CHANGELOG.rst>`__. There have been no backward-incompatible changes yet.
+
 Basic usage
 -----------
 
