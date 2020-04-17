@@ -4,18 +4,18 @@ import datetime
 import decimal
 import uuid
 from collections import OrderedDict
-from typing import Generic, List, Type, Dict, Any, Tuple, TypeVar, Mapping
+from typing import Any, Dict, Generic, Mapping, List, Tuple, Type, TypeVar
 
+import rest_framework.fields
+import rest_framework.serializers
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model
 from django.utils.functional import cached_property
-import rest_framework.fields
-import rest_framework.serializers
-from rest_framework.relations import PrimaryKeyRelatedField, HyperlinkedRelatedField
+from rest_framework.relations import HyperlinkedRelatedField, PrimaryKeyRelatedField
 from rest_framework.utils.field_mapping import get_relation_kwargs
 
 from rest_framework_dataclasses import field_utils, typing_utils
-from rest_framework_dataclasses.field_utils import DataclassDefinition, get_dataclass_definition, TypeInfo
+from rest_framework_dataclasses.field_utils import get_dataclass_definition, DataclassDefinition, TypeInfo
 from rest_framework_dataclasses.types import Dataclass
 
 
