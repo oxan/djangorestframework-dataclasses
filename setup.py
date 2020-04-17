@@ -29,6 +29,7 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Software Development :: Libraries :: Application Frameworks',
         'Topic :: Software Development :: Libraries :: Python Modules',
@@ -40,7 +41,7 @@ setup(
     },
     python_requires='>=3.7',
     install_requires=[
-        'django>=1.11',
+        'django>=2.0',
         'djangorestframework>=3.9',
         'typing_extensions>=3.7.4; python_version<"3.8"'
     ]
