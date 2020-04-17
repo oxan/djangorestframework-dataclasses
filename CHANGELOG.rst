@@ -1,5 +1,5 @@
-0.6, pending
-------------
+0.6, 17 April 2020
+------------------
 * Rewrite to ``save()`` implementation to finally fix all issues with nested
   serializers.
 * Fix deserialization for fields using ``source`` option.
