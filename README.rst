@@ -99,6 +99,21 @@ regular ``Serializer`` class. This allows to specify extra options or change the
         class Meta:
             dataclass = Person
 
+Get serialized dataclass object
+-------------------------------
+
+To convert user input back to your dataclass:
+    
+.. code:: Python
+   
+    serializer = PersonSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        ...
+
+    person: Person = serializer.validated_data
+    print(person.name)
+
 Customize field generation
 --------------------------
 
