@@ -85,11 +85,8 @@ The serializer for this dataclass can now trivially be defined without having to
         phone = fields.ListField(child=fields.CharField())
         movie_ratings = fields.DictField(child=fields.IntegerField())
 
-Note that this usage pattern is very similar to that of the built-in ``ModelSerializer``. This is intentional, with the
-whole API modelled after that of ``ModelSerializer``.
-
 You can add extra fields or override default fields by declaring them explicitly on the class, just as you would for a
-regular ``Serializer`` class. This allows to specify extra options or change the field type.
+regular ``Serializer`` class. This allows to specify extra field options or change a field type.
 
 .. code:: Python
 
@@ -98,6 +95,16 @@ regular ``Serializer`` class. This allows to specify extra options or change the
 
         class Meta:
             dataclass = Person
+
+Dataclass serializers behave in the same way and can be used in the same places as the built-in serializers from Django
+REST Framework: you can retrieve the serialized representation using the ``.data`` property, and the deserialized
+dataclass instance using the ``.validated_data`` property. Furthermore, the ``save()`` method is implemented to create
+or update an existing dataclass instance. You can find more information on serializer usage in the
+`Django REST Framework <https://www.django-rest-framework.org/api-guide/serializers/>`__ documentation.
+
+Note that this usage pattern is very similar to that of the built-in ``ModelSerializer``. This is intentional, with the
+whole API modelled after that of ``ModelSerializer``. Most features and behaviour known from ``ModelSerializer`` applies
+to dataclass serializers as well.
 
 Customize field generation
 --------------------------
