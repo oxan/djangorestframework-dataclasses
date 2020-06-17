@@ -149,3 +149,24 @@ def get_literal_choices(tp: type) -> typing.List[typing.Union[str, bytes, int, b
         else:
             values.append(value)
     return values
+
+
+def is_type_variable(tp: type) -> bool:
+    """
+    Test if the given type is a variable type.
+    """
+    return isinstance(tp, typing.TypeVar)
+
+
+def get_variable_types(tp: typing.TypeVar) -> typing.Optional[typing.List[type]]:
+    """
+    Get the possible types for a variable type.
+    """
+    return list(tp.__constraints__) if len(tp.__constraints__) > 0 else None
+
+
+def get_variable_type_substitute(tp: typing.TypeVar) -> type:
+    """
+    Get the substitute for a variable type.
+    """
+    return typing.Union[tp.__constraints__] if len(tp.__constraints__) > 0 else typing.Any
