@@ -56,6 +56,10 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         datetime.time:      rest_framework.fields.TimeField,
         datetime.timedelta: rest_framework.fields.DurationField,
         uuid.UUID:          rest_framework.fields.UUIDField,
+        # Note that these are only used for class typehints, typing.Dict and typing.List are handled by
+        # build_composite_field().
+        dict:               rest_framework.fields.DictField,
+        list:               rest_framework.fields.ListField
     }
     serializer_related_field = PrimaryKeyRelatedField
 
