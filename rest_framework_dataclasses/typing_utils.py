@@ -13,6 +13,12 @@ import typing
 
 from .types import Literal
 
+# typing._BaseGenericAlias was split-out from GenericAlias in Python 3.9
+if hasattr(typing, '_BaseGenericAlias'):
+    GenericAlias = typing._BaseGenericAlias
+else:
+    GenericAlias = typing._GenericAlias
+
 
 def is_iterable_type(tp: type) -> bool:
     """
@@ -35,7 +41,7 @@ def is_iterable_type(tp: type) -> bool:
     # * Having an __origin__ that extends collections.abc.Iterable
     # * The element type is the first item in __args__
     return (
-        isinstance(tp, typing._GenericAlias) and
+        isinstance(tp, GenericAlias) and
         isinstance(tp.__origin__, type) and
         issubclass(tp.__origin__, collections.abc.Iterable) and
         len(tp.__args__) >= 1
@@ -67,7 +73,7 @@ def is_mapping_type(tp: type) -> bool:
     # * Having an __origin__ that extends collections.abc.Mapping
     # * The value type is the second (of two) item in __args__
     return (
-        isinstance(tp, typing._GenericAlias) and
+        isinstance(tp, GenericAlias) and
         isinstance(tp.__origin__, type) and
         issubclass(tp.__origin__, collections.abc.Mapping) and
         len(tp.__args__) == 2
@@ -102,7 +108,7 @@ def is_optional_type(tp: type) -> bool:
     # except for Literals (sigh), which are just regular Literals with None as an allowed value.
     none_type = type(None)
     return (
-        isinstance(tp, typing._GenericAlias) and
+        isinstance(tp, GenericAlias) and
         tp.__origin__ is typing.Union and
         any(argument_type is none_type for argument_type in tp.__args__) and
         len([argument_type for argument_type in tp.__args__ if argument_type is not none_type]) == 1
@@ -132,7 +138,7 @@ def is_literal_type(tp: type) -> bool:
     """
     # Stolen from typing_inspect
     return (tp is Literal
-            or (isinstance(tp, typing._GenericAlias) and tp.__origin__ is Literal))
+            or (isinstance(tp, GenericAlias) and tp.__origin__ is Literal))
 
 
 def get_literal_choices(tp: type) -> typing.List[typing.Union[str, bytes, int, bool, None]]:
