@@ -53,8 +53,11 @@ def get_type_info(tp: type) -> TypeInfo:
 
     if is_mapping:
         tp = typing_utils.get_mapping_value_type(tp)
-    elif is_many:  # This must be elif (instead of if), as otherwise we'd reduce mappings twice
+    elif is_many:  # This must be elif (instead of if), as otherwise we'd reduce mappings twice as they're also iterable
         tp = typing_utils.get_iterable_element_type(tp)
+
+    if tp is typing.Any:
+        tp = None
 
     return TypeInfo(is_many, is_mapping, is_optional, tp)
 

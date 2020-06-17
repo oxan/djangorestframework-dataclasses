@@ -333,6 +333,15 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         """
         Create a composite (mapping or list) field.
         """
+        if type_info.is_mapping:
+            field_class = rest_framework.fields.DictField
+        else:
+            field_class = rest_framework.fields.ListField
+
+        # If the base type is not specified or is any type, we don't have to bother creating the child field.
+        if type_info.base_type is None:
+            return field_class, {}
+
         # Recurse to build the child field (i.e. the field of every instance). We pass the extra kwargs that are
         # specified for the child field through, so these can be used to recursively specify kwargs for child fields.
         extra_child_field_kwargs = extra_kwargs.get('child_kwargs', {})
@@ -346,12 +355,6 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         # Create child field and initialize parent field kwargs
         child_field = child_field_class(**child_field_kwargs)
         field_kwargs = {'child': child_field}
-
-        if type_info.is_mapping:
-            field_class = rest_framework.fields.DictField
-        else:
-            field_class = rest_framework.fields.ListField
-
         return field_class, field_kwargs
 
     def build_standard_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:

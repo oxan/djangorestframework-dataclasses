@@ -25,16 +25,18 @@ class FieldsTest(unittest.TestCase):
         field_class, field_kwargs = self.build_typed_field(type_hint)
         self.assertIs(field, field_class, f'for field of type {type_hint}')
 
-        if kwargs:
+        if kwargs is not None:
             self.assertDictEqual(field_kwargs, kwargs, f'arguments for field of type {type_hint}')
 
     def test_composite(self):
         self.check_field(typing.Iterable[str], fields.ListField)
         self.check_field(typing.Sequence[str], fields.ListField)
         self.check_field(typing.List[str], fields.ListField)
+        self.check_field(typing.List[typing.Any], fields.ListField, {})
 
         self.check_field(typing.Mapping[str, int], fields.DictField)
         self.check_field(typing.Dict[str, int], fields.DictField)
+        self.check_field(typing.Dict[str, typing.Any], fields.DictField, {})
 
         # check that kwargs generated for the child field are actually applied
         _, list_kwargs = self.build_typed_field(typing.List[typing.Optional[str]])
