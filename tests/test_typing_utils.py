@@ -1,11 +1,16 @@
 import typing
-
-from unittest import TestCase
+import unittest
+import sys
 
 from rest_framework_dataclasses import types, typing_utils
 
 
-class TypingTest(TestCase):
+class TypingTest(unittest.TestCase):
+    def assertAnyTypeEquivalent(self, tp: type):
+        # In some cases we accept either typing.Any (used by Python 3.9+) or an unconstrained typevar (used by Python
+        # 3.7 and 3.8). It's essentially the same, and we strip the typevar before usage anyway.
+        self.assertTrue(tp is typing.Any or (isinstance(tp, typing.TypeVar) and len(tp.__constraints__) == 0))
+
     def test_iterable(self):
         self.assertTrue(typing_utils.is_iterable_type(typing.Iterable[str]))
         self.assertTrue(typing_utils.is_iterable_type(typing.Collection[str]))
@@ -15,6 +20,7 @@ class TypingTest(TestCase):
         self.assertTrue(typing_utils.is_iterable_type(typing.Dict[str, int]))
         self.assertTrue(typing_utils.is_iterable_type(typing.Set[str]))
         self.assertTrue(typing_utils.is_iterable_type(typing.Generator[str, int, int]))
+        self.assertTrue(typing_utils.is_iterable_type(typing.List))
         self.assertFalse(typing_utils.is_iterable_type(str))
         self.assertFalse(typing_utils.is_iterable_type(bytes))
         self.assertFalse(typing_utils.is_iterable_type(int))
@@ -28,6 +34,7 @@ class TypingTest(TestCase):
         self.assertEqual(typing_utils.get_iterable_element_type(typing.Dict[str, int]), str)
         self.assertEqual(typing_utils.get_iterable_element_type(typing.Set[str]), str)
         self.assertEqual(typing_utils.get_iterable_element_type(typing.Generator[str, int, int]), str)
+        self.assertAnyTypeEquivalent(typing_utils.get_iterable_element_type(typing.List))
 
         with self.assertRaises(ValueError):
             typing_utils.get_iterable_element_type(str)
@@ -35,15 +42,25 @@ class TypingTest(TestCase):
     def test_mapping(self):
         self.assertTrue(typing_utils.is_mapping_type(typing.Mapping[str, int]))
         self.assertTrue(typing_utils.is_mapping_type(typing.Dict[str, int]))
+        self.assertTrue(typing_utils.is_mapping_type(typing.Dict))
         self.assertFalse(typing_utils.is_mapping_type(str))
         self.assertFalse(typing_utils.is_mapping_type(int))
         self.assertFalse(typing_utils.is_mapping_type(TypingTest))
 
         self.assertEqual(typing_utils.get_mapping_value_type(typing.Mapping[str, int]), int)
         self.assertEqual(typing_utils.get_mapping_value_type(typing.Dict[str, int]), int)
+        self.assertAnyTypeEquivalent(typing_utils.get_mapping_value_type(typing.Dict))
 
         with self.assertRaises(ValueError):
             typing_utils.get_mapping_value_type(str)
+
+    @unittest.skipIf(sys.version_info < (3, 9, 0), 'Python 3.9 required')
+    def test_pep585(self):
+        self.assertTrue(typing_utils.is_iterable_type(list[int]))
+        self.assertEqual(typing_utils.get_iterable_element_type(list[int]), int)
+
+        self.assertTrue(typing_utils.is_mapping_type(dict[str, int]))
+        self.assertTrue(typing_utils.get_mapping_value_type(dict[str, int]), int)
 
     def test_optional(self):
         self.assertTrue(typing_utils.is_optional_type(typing.Optional[str]))
