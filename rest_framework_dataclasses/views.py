@@ -117,9 +117,8 @@ def typed_view(view_function: Callable = None, *, body: str = '', serializers: D
                 request_serializer.is_valid(raise_exception=True)
                 view_kwargs[body] = request_serializer.save()
             else:
-                # Compromise here: when a key is supplied once we use just that value, otherwise we treat it as a list.
-                # Note that this makes it impossible to supply a list with just one item for now.
-                request_data = {k: v[0] if len(v) == 1 else v for k, v in request.query_params.lists()}
+                # Get rid of query parameters being multiple valued
+                request_data = {k: v for k, v in request.query_params.items()}
                 if body is not None:
                     request_data[body] = request.data
 
