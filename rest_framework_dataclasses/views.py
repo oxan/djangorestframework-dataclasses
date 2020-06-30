@@ -1,7 +1,7 @@
 import dataclasses
 import functools
 import inspect
-from typing import Iterable, Tuple, Any, Dict
+from typing import Iterable, Tuple, Any, Dict, Callable
 
 from rest_framework.response import Response
 from rest_framework.settings import api_settings
@@ -32,7 +32,7 @@ def _make_serializer(name: str, fields: Iterable[Tuple[str, type, bool, Any, typ
     return dataclass, _make_dataclass_serializer(dataclass, serializer_fields)
 
 
-def typed_view(view_function=None, *, body='', serializers=None):
+def typed_view(view_function: Callable = None, *, body: str = '', serializers: Dict[str, type] = None):
     # Accept both @typed_view and @typed_view(...) invocations
     if not view_function:
         return functools.partial(typed_view, body=body, serializers=serializers)
