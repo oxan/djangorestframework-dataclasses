@@ -1,6 +1,7 @@
 import dataclasses
 import functools
 import inspect
+import typing
 from typing import Iterable, Tuple, Any, Dict, Callable
 
 from rest_framework.response import Response
@@ -21,12 +22,12 @@ def _make_dataclass_serializer(dataclass: type, serializer_fields: Dict[str, Any
 def _make_serializer(name: str, fields: Iterable[Tuple[str, type, bool, Any, type]]):
     dataclass_fields = []
     serializer_fields = {}
-    for name, annotation, has_default, default, serializer in fields:
+    for field_name, annotation, has_default, default, serializer in fields:
         default = default if has_default else dataclasses.MISSING
-        dataclass_fields.append((name, annotation, dataclasses.field(default=default)))
+        dataclass_fields.append((field_name, annotation, dataclasses.field(default=default)))
         if serializer is not None:
             is_many = typing_utils.is_iterable_type(annotation)
-            serializer_fields[name] = serializer(many=is_many)
+            serializer_fields[field_name] = serializer(many=is_many)
 
     dataclass = dataclasses.make_dataclass(name, dataclass_fields)
     return dataclass, _make_dataclass_serializer(dataclass, serializer_fields)
@@ -41,24 +42,27 @@ def typed_view(view_function: Callable = None, *, body: str = '', serializers: D
     if not serializers:
         serializers = {}
 
+    # We can't directly use the annotations returned by inspect.signature, as those don't have resolved references.
     signature = inspect.signature(view_function)
-    inject_parameters = signature.parameters.copy()
+    signature_hints = typing.get_type_hints(view_function)
+    inject_parameters = {param.name: (signature_hints.get(param.name, None), param.default)
+                         for param in signature.parameters.values()}
     is_method = bool(inject_parameters.pop('self', None))
 
     # Make sure we can inject the type of every non-optional parameter.
-    for param in inject_parameters.values():
-        if param.annotation == inspect.Parameter.empty and param.default == inspect.Parameter.empty:
-            raise Exception(f'Typed view {view_function.__qualname__} parameter {param.name} must have type annotation '
+    for name, (hint, default) in inject_parameters.items():
+        if hint is None and default is inspect.Parameter.empty:
+            raise Exception(f'Typed view {view_function.__qualname__} parameter {name} must have type annotation '
                             f'or default value.')
 
-        if param.annotation not in primitive_types and not dataclasses.is_dataclass(param.annotation):
-            raise Exception(f'Typed view {view_function.__qualname__} parameter {param.name} must be of a primitive or '
+        if hint is not None and hint not in primitive_types and not dataclasses.is_dataclass(hint):
+            raise Exception(f'Typed view {view_function.__qualname__} parameter {name} must be of a primitive or '
                             f'dataclass type, or have a default value.')
 
     # If it isn't explicitly specified for which parameter the request body should be used, use it for the first
     # non-primitive parameter, if there is any.
     if body == '':
-        body = next((p.name for p in inject_parameters.values() if p.annotation not in (bool, float, int, str)), None)
+        body = next((name for name, (hint, _) in inject_parameters.items() if hint not in primitive_types), None)
     elif body not in inject_parameters:
         raise Exception(f'The specified body parameter {body} on typed view {view_function.__qualname__} cannot be '
                         f'injected.')
@@ -66,34 +70,33 @@ def typed_view(view_function: Callable = None, *, body: str = '', serializers: D
     # Determine serializer for the request, if there is something to inject.
     request_serializer_type = None
     if len(inject_parameters) > 0:
-        if(len(inject_parameters) == 1 and body is not None and
-                dataclasses.is_dataclass(inject_parameters[body].annotation)):
+        if len(inject_parameters) == 1 and body is not None and dataclasses.is_dataclass(inject_parameters[body][0]):
             # Optimization: in the common case where the body is the single parameter to be injected, don't wrap it
             # inside another dataclass for serialization.
-            request_dataclass = inject_parameters[body].annotation
+            request_dataclass = inject_parameters[body][0]
             request_serializer_type = serializers.get(body, _make_dataclass_serializer(request_dataclass))
             request_optimized = True
         else:
             # Generic case: when more than just the body is injected, construct a dataclass type to deserialize all
             # parameters into.
-            request_fields = [(param.name, param.annotation, param.default != inspect.Parameter.empty, param.default,
-                               serializers.get(param.name, None)) for param in inject_parameters.values()]
+            request_fields = [(name, hint, default != inspect.Parameter.empty, default, serializers.get(name, None))
+                              for name, (hint, default) in inject_parameters.items()]
             request_dataclass, request_serializer_type = _make_serializer('Request', request_fields)
             request_optimized = False
 
     # Determine serializer for the response.
     response_serializer_type = None
-    if signature.return_annotation is inspect.Signature.empty:
+    if 'return' not in signature_hints:
         raise Exception(f'Typed view {view_function.__qualname__} must have a return type annotation.')
-    elif signature.return_annotation is not Response:
-        if dataclasses.is_dataclass(signature.return_annotation):
+    elif signature_hints['return'] is not Response:
+        if dataclasses.is_dataclass(signature_hints['return']):
             # Optimization: if a dataclass is returned, we can serialize that directly.
-            response_dataclass = signature.return_annotation
+            response_dataclass = signature_hints['return']
             response_serializer_type = serializers.get('return', _make_dataclass_serializer(response_dataclass))
             response_optimized = True
         else:
             # Generic case: construct a dataclass type to serialize the result from.
-            fields = [('response', signature.return_annotation, False, None, serializers.get('return', None))]
+            fields = [('response', signature_hints['return'], False, None, serializers.get('return', None))]
             response_dataclass, response_serializer_type = _make_serializer('Response', fields)
             response_optimized = False
 
