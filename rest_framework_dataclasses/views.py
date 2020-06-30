@@ -1,11 +1,35 @@
 import dataclasses
 import functools
 import inspect
+from typing import Iterable, Tuple, Any, Dict
 
 from rest_framework.response import Response
 from rest_framework.settings import api_settings
 
+from rest_framework_dataclasses import typing_utils
 from rest_framework_dataclasses.serializers import DataclassSerializer
+
+
+def _make_dataclass_serializer(dataclass: type, serializer_fields: Dict[str, Any] = None):
+    if not serializer_fields:
+        serializer_fields = {}
+    serializer_fields['Meta'] = type('Meta', (), {'dataclass': dataclass})
+    serializer_type = type(f'{dataclass.__name__}Serializer', (DataclassSerializer, ), serializer_fields)
+    return serializer_type
+
+
+def _make_serializer(name: str, fields: Iterable[Tuple[str, type, bool, Any, type]]):
+    dataclass_fields = []
+    serializer_fields = {}
+    for name, annotation, has_default, default, serializer in fields:
+        default = default if has_default else dataclasses.MISSING
+        dataclass_fields.append((name, annotation, dataclasses.field(default=default)))
+        if serializer is not None:
+            is_many = typing_utils.is_iterable_type(annotation)
+            serializer_fields[name] = serializer(many=is_many)
+
+    dataclass = dataclasses.make_dataclass(name, dataclass_fields)
+    return dataclass, _make_dataclass_serializer(dataclass, serializer_fields)
 
 
 def typed_view(view_function=None, *, body='', serializers=None):
@@ -47,20 +71,15 @@ def typed_view(view_function=None, *, body='', serializers=None):
             # Optimization: in the common case where the body is the single parameter to be injected, don't wrap it
             # inside another dataclass for serialization.
             request_dataclass = inject_parameters[body].annotation
+            request_serializer_type = serializers.get(body, _make_dataclass_serializer(request_dataclass))
             request_optimized = True
         else:
             # Generic case: when more than just the body is injected, construct a dataclass type to deserialize all
             # parameters into.
-            request_fields = []
-            for param in inject_parameters.values():
-                field_default = param.default if param.default != inspect.Parameter.empty else dataclasses.MISSING
-                request_fields.append((param.name, param.annotation, dataclasses.field(default=field_default)))
-
-            request_dataclass = dataclasses.make_dataclass('RequestData', request_fields)
+            request_fields = [(param.name, param.annotation, param.default != inspect.Parameter.empty, param.default,
+                               serializers.get(param.name, None)) for param in inject_parameters.values()]
+            request_dataclass, request_serializer_type = _make_serializer('Request', request_fields)
             request_optimized = False
-
-        request_serializer_type = serializers.get(request_dataclass,
-                                                  functools.partial(DataclassSerializer, dataclass=request_dataclass))
 
     # Determine serializer for the response.
     response_serializer_type = None
@@ -70,14 +89,13 @@ def typed_view(view_function=None, *, body='', serializers=None):
         if dataclasses.is_dataclass(signature.return_annotation):
             # Optimization: if a dataclass is returned, we can serialize that directly.
             response_dataclass = signature.return_annotation
+            response_serializer_type = serializers.get('return', _make_dataclass_serializer(response_dataclass))
             response_optimized = True
         else:
             # Generic case: construct a dataclass type to serialize the result from.
-            response_dataclass = dataclasses.make_dataclass('ResponseData', [('response', signature.return_annotation)])
+            fields = [('response', signature.return_annotation, False, None, serializers.get('return', None))]
+            response_dataclass, response_serializer_type = _make_serializer('Response', fields)
             response_optimized = False
-
-        response_serializer_type = serializers.get(response_dataclass,
-                                                   functools.partial(DataclassSerializer, dataclass=response_dataclass))
 
     @functools.wraps(view_function)
     def view_wrapper(*args, **kwargs):
@@ -90,31 +108,33 @@ def typed_view(view_function=None, *, body='', serializers=None):
         if is_method:
             serializer_context['view'] = view_args[0]
 
-        if request_serializer_type is not None and request_optimized:
-            request_serializer = request_serializer_type(data=request.data, context=serializer_context)
-            request_serializer.is_valid(raise_exception=True)
-            view_kwargs[body] = request_serializer.save()
-        elif request_serializer_type is not None:
-            # Compromise here: when a key is supplied once we use just that value, otherwise we treat it as a list.
-            # Note that this makes it impossible to supply a list with just one item for now.
-            request_data = {k: v[0] if len(v) == 1 else v for k, v in request.query_params.lists()}
-            if body is not None:
-                request_data[body] = request.data
+        if request_serializer_type is not None:
+            if request_optimized:
+                request_serializer = request_serializer_type(data=request.data, context=serializer_context)
+                request_serializer.is_valid(raise_exception=True)
+                view_kwargs[body] = request_serializer.save()
+            else:
+                # Compromise here: when a key is supplied once we use just that value, otherwise we treat it as a list.
+                # Note that this makes it impossible to supply a list with just one item for now.
+                request_data = {k: v[0] if len(v) == 1 else v for k, v in request.query_params.lists()}
+                if body is not None:
+                    request_data[body] = request.data
 
-            request_serializer = request_serializer_type(data=request_data, context=serializer_context)
-            request_serializer.is_valid(raise_exception=True)
-            view_kwargs.update(dataclasses.asdict(request_serializer.save()))
+                request_serializer = request_serializer_type(data=request_data, context=serializer_context)
+                request_serializer.is_valid(raise_exception=True)
+                view_kwargs.update(dataclasses.asdict(request_serializer.save()))
 
         view_return = view_function(*view_args, **view_kwargs)
 
-        if response_serializer_type is not None and response_optimized:
-            response_serializer = response_serializer_type(instance=view_return, context=serializer_context)
-            return Response(response_serializer.data)
-        elif response_serializer_type is not None:
-            response_data = response_dataclass(view_return)
-            response_serializer = response_serializer_type(instance=response_data, context=serializer_context)
-            return Response(response_serializer.data)
-        else:
-            return view_return
+        if response_serializer_type is not None:
+            if response_optimized:
+                response_serializer = response_serializer_type(instance=view_return, context=serializer_context)
+                return Response(response_serializer.data)
+            else:
+                response_data = response_dataclass(view_return)
+                response_serializer = response_serializer_type(instance=response_data, context=serializer_context)
+                return Response(response_serializer.data['response'])
+
+        return view_return
 
     return view_wrapper
