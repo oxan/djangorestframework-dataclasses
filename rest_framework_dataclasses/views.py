@@ -49,23 +49,27 @@ def typed_view(view_function: Callable = None, *, body: str = '', serializers: D
                          for param in signature.parameters.values()}
     is_method = bool(inject_parameters.pop('self', None))
 
-    # Make sure we can inject the type of every non-optional parameter.
-    for name, (hint, default) in inject_parameters.items():
-        if hint is None and default is inspect.Parameter.empty:
-            raise Exception(f'Typed view {view_function.__qualname__} parameter {name} must have type annotation '
-                            f'or default value.')
-
-        if hint is not None and hint not in primitive_types and not dataclasses.is_dataclass(hint):
-            raise Exception(f'Typed view {view_function.__qualname__} parameter {name} must be of a primitive or '
-                            f'dataclass type, or have a default value.')
-
     # If it isn't explicitly specified for which parameter the request body should be used, use it for the first
     # non-primitive parameter, if there is any.
     if body == '':
         body = next((name for name, (hint, _) in inject_parameters.items() if hint not in primitive_types), None)
     elif body not in inject_parameters:
-        raise Exception(f'The specified body parameter {body} on typed view {view_function.__qualname__} cannot be '
-                        f'injected.')
+        raise Exception(f'The specified body parameter {body} on typed view {view_function.__qualname__} does not '
+                        f'exist.')
+
+    # Make sure we can inject something for every non-optional parameter.
+    for name, (hint, default) in inject_parameters.items():
+        if hint is None and default is inspect.Parameter.empty:
+            raise Exception(f'Typed view {view_function.__qualname__} parameter {name} must have type annotation or '
+                            f'default value.')
+
+        if hint is not None and hint not in primitive_types and not dataclasses.is_dataclass(hint):
+            raise Exception(f'To inject typed view {view_function.__qualname__} parameter {name}, it must be a '
+                            f'primitive or dataclass type.')
+
+        if hint is not None and hint not in primitive_types and body != name:
+            raise Exception(f'Non-primitive parameter {name} on typed view {view_function.__qualname__} can only '
+                            f'be injected with request body, but request body is used for parameter {body}.')
 
     # Determine serializer for the request, if there is something to inject.
     request_serializer_type = None
@@ -96,10 +100,11 @@ def typed_view(view_function: Callable = None, *, body: str = '', serializers: D
             response_optimized = True
         else:
             # Generic case: construct a dataclass type to serialize the result from.
-            fields = [('response', signature_hints['return'], False, None, serializers.get('return', None))]
-            response_dataclass, response_serializer_type = _make_serializer('Response', fields)
+            response_fields = [('response', signature_hints['return'], False, None, serializers.get('return', None))]
+            response_dataclass, response_serializer_type = _make_serializer('Response', response_fields)
             response_optimized = False
 
+    # The actual wrapper of the view function
     @functools.wraps(view_function)
     def view_wrapper(*args, **kwargs):
         args = list(args)
