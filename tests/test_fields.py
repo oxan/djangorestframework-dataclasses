@@ -1,9 +1,11 @@
 import dataclasses
 import datetime
 import decimal
+import sys
 import typing
 import unittest
 import uuid
+from collections import abc
 
 from rest_framework import fields
 
@@ -33,6 +35,7 @@ class FieldsTest(unittest.TestCase):
 
         self.check_field(typing.Iterable[str], fields.ListField)
         self.check_field(typing.Sequence[str], fields.ListField)
+        self.check_field(typing.Tuple[str], fields.ListField)
         self.check_field(typing.List[str], fields.ListField)
         self.check_field(typing.List[typing.Any], fields.ListField, {})
         self.check_field(typing.List[var_type], fields.ListField, {})
@@ -62,6 +65,29 @@ class FieldsTest(unittest.TestCase):
                                                 extra_kwargs={'child_kwargs': {'max_value': 5}})
         self.assertIsInstance(list_kwargs['child'], fields.IntegerField)
         self.assertEqual(list_kwargs['child'].max_value, 5)
+
+    @unittest.skipIf(sys.version_info < (3, 9, 0), 'Python 3.9 required')
+    def test_composite_pep585(self):
+        self.check_field(abc.Iterable[str], fields.ListField)
+        self.check_field(abc.Sequence[str], fields.ListField)
+        self.check_field(tuple[str], fields.ListField)
+        self.check_field(list[str], fields.ListField)
+        self.check_field(list[typing.Any], fields.ListField, {})
+
+        self.check_field(abc.Mapping[str, int], fields.DictField)
+        self.check_field(dict[str, int], fields.DictField)
+        self.check_field(dict[str, typing.Any], fields.DictField, {})
+
+        # check that kwargs generated for the child field are actually applied
+        _, list_kwargs = self.build_typed_field(list[typing.Optional[str]])
+        self.assertIsInstance(list_kwargs['child'], fields.CharField)
+        self.assertFalse(list_kwargs['child'].required)
+        self.assertTrue(list_kwargs['child'].allow_null)
+
+        _, dict_kwargs = self.build_typed_field(dict[str, Literal['a', 'b', '']])
+        self.assertIsInstance(dict_kwargs['child'], fields.ChoiceField)
+        self.assertDictEqual(dict_kwargs['child'].choices, {'a': 'a', 'b': 'b'})
+        self.assertTrue(dict_kwargs['child'].allow_blank)
 
     def test_nested(self):
         refclass = dataclasses.make_dataclass('ReferencedDataclass', [])
