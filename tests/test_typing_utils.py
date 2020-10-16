@@ -79,6 +79,17 @@ class TypingTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             typing_utils.get_optional_type(str)
 
+    def test_final(self):
+        self.assertTrue(typing_utils.is_final_type(types.Final[int]))
+        self.assertTrue(typing_utils.is_final_type(types.Final))
+        self.assertFalse(typing_utils.is_final_type(int))
+
+        self.assertEqual(typing_utils.get_final_type(types.Final[int]), int)
+        self.assertAnyTypeEquivalent(typing_utils.get_final_type(types.Final))
+
+        with self.assertRaises(ValueError):
+            typing_utils.get_optional_type(str)
+
     def test_literal(self):
         self.assertTrue(typing_utils.is_literal_type(types.Literal['a', 'b']))
         self.assertTrue(typing_utils.is_literal_type(types.Literal['a', 'b', None]))

@@ -20,6 +20,7 @@ class DataclassDefinition:
 class TypeInfo:
     is_many: bool
     is_mapping: bool
+    is_final: bool
     is_optional: bool
     base_type: type
 
@@ -50,11 +51,14 @@ def get_type_info(tp: type) -> TypeInfo:
 
     is_mapping = typing_utils.is_mapping_type(tp)
     is_many = typing_utils.is_iterable_type(tp)
+    is_final = typing_utils.is_final_type(tp)  # Nesting a final type inside something else doesn't make sense, I think.
 
     if is_mapping:
         tp = typing_utils.get_mapping_value_type(tp)
     elif is_many:  # This must be elif (instead of if), as otherwise we'd reduce mappings twice as they're also iterable
         tp = typing_utils.get_iterable_element_type(tp)
+    elif is_final:
+        tp = typing_utils.get_final_type(tp)
 
     if typing_utils.is_type_variable(tp):
         tp = typing_utils.get_variable_type_substitute(tp)
@@ -62,7 +66,7 @@ def get_type_info(tp: type) -> TypeInfo:
     if tp is typing.Any:
         tp = None
 
-    return TypeInfo(is_many, is_mapping, is_optional, tp)
+    return TypeInfo(is_many, is_mapping, is_final, is_optional, tp)
 
 
 def get_relation_info(definition: DataclassDefinition, type_info: TypeInfo) -> RelationInfo:

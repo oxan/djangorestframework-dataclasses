@@ -18,7 +18,7 @@ development seems to have stalled. Maybe in the future?
 import collections
 import typing
 
-from .types import Literal
+from .types import Final, Literal
 
 # typing._BaseGenericAlias was split-out from GenericAlias in Python 3.9
 if hasattr(typing, '_BaseGenericAlias'):
@@ -180,6 +180,24 @@ def get_literal_choices(tp: type) -> typing.List[typing.Union[str, bytes, int, b
         else:
             values.append(value)
     return values
+
+
+def is_final_type(tp: type) -> bool:
+    """
+    Test if the given type is a final type.
+    """
+    return tp is Final or get_origin(tp) is Final
+
+
+def get_final_type(tp: type) -> type:
+    """
+    Get the type that is made final.
+    """
+    if not is_final_type(tp):
+        raise ValueError('get_final_type() called with non-final type.')
+
+    args = get_args(tp)
+    return args[0] if len(args) > 0 else typing.Any
 
 
 def is_type_variable(tp: type) -> bool:

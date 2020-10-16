@@ -342,6 +342,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             field_kwargs['required'] = False
             field_kwargs['allow_null'] = True
 
+        if type_info.is_final:
+            field_kwargs['read_only'] = True
+
         return field_class, field_kwargs
 
     def build_composite_field(self, field_name: str, type_info: TypeInfo,

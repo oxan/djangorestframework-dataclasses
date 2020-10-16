@@ -12,7 +12,7 @@ from rest_framework import fields
 
 from rest_framework_dataclasses import field_utils
 from rest_framework_dataclasses.serializers import DataclassSerializer
-from rest_framework_dataclasses.types import Literal
+from rest_framework_dataclasses.types import Final, Literal
 
 
 class FieldsTest(unittest.TestCase):
@@ -124,6 +124,14 @@ class FieldsTest(unittest.TestCase):
                          {'required': False, 'allow_null': True})
         self.check_field(typing.Optional[str], fields.CharField,
                          {'required': False, 'allow_null': True})
+
+    def test_standard_final(self):
+        self.check_field(Final[int], fields.IntegerField, {'read_only': True})
+        self.check_field(Final[str], fields.CharField, {'read_only': True})
+
+        # Final fields without an explicit type are not supported (yet).
+        with self.assertRaises(NotImplementedError):
+            self.check_field(Final, fields.CharField, {'read_only': True})
 
     def test_standard_decimal(self):
         self.check_field(decimal.Decimal, fields.DecimalField)
