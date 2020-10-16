@@ -88,7 +88,7 @@ class TypingTest(unittest.TestCase):
         self.assertAnyTypeEquivalent(typing_utils.get_final_type(types.Final))
 
         with self.assertRaises(ValueError):
-            typing_utils.get_optional_type(str)
+            typing_utils.get_final_type(str)
 
     def test_literal(self):
         self.assertTrue(typing_utils.is_literal_type(types.Literal['a', 'b']))
@@ -115,6 +115,9 @@ class TypingTest(unittest.TestCase):
                              ['a', 'b', 1, 2])
         self.assertListEqual(typing_utils.get_literal_choices(types.Literal['a', 'b', types.Literal[1, 2, None]]),
                              ['a', 'b', 1, 2, None])
+
+        with self.assertRaises(ValueError):
+            typing_utils.get_literal_choices(str)
 
     # noinspection PyPep8Naming
     def test_variable_type(self):

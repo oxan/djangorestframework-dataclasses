@@ -9,7 +9,7 @@ from django.core.exceptions import ImproperlyConfigured
 from rest_framework import fields, serializers
 from rest_framework.fields import empty
 
-from rest_framework_dataclasses.serializers import DataclassSerializer
+from rest_framework_dataclasses.serializers import DataclassSerializer, HyperlinkedDataclassSerializer
 
 
 @dataclasses.dataclass
@@ -366,3 +366,11 @@ class SerializerTest(TestCase):
         parent = dataclasses.make_dataclass('parent', [('container', simple)])
         value = self.create_serializer(parent).to_internal_value({'container': {'value': 'a'}})
         self.assertEqual(value, parent(container=simple(value='a')))
+
+    def test_hyperlinked(self):
+        # test if it nests itself, as opposed to the "default" DataclassSerializer
+        ser = HyperlinkedDataclassSerializer(dataclass=Group)
+        f = ser.get_fields()
+
+        self.assertIsInstance(f['leader'], HyperlinkedDataclassSerializer)
+        self.assertIsInstance(f['people'].child, HyperlinkedDataclassSerializer)

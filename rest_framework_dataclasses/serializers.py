@@ -538,7 +538,6 @@ class HyperlinkedDataclassSerializer(DataclassSerializer):
         """
         field_class = HyperlinkedDataclassSerializer
         field_kwargs = {'dataclass': type_info.base_type,
-                        'many': type_info.is_many,
-                        'allow_null': type_info.is_optional}
+                        'many': type_info.is_many}
 
         return field_class, field_kwargs
