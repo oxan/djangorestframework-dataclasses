@@ -5,7 +5,7 @@ import decimal
 import typing
 import uuid
 
-from unittest import TestCase
+from unittest import TestCase, expectedFailure
 
 from rest_framework import fields
 
@@ -147,3 +147,28 @@ class EmptyPersonTest(TestCase, FunctionalTestMixin):
         'age': None,
         'movie_ratings': None
     }
+
+
+class PartialPersonTest(TestCase):
+    @expectedFailure
+    def test_update(self):
+        input_instance = Person(
+            id=uuid.UUID('28ee3ae5-480b-46bd-9ae4-c61cf8341b95'),
+            name='Alice',
+            email='alice@example.com',
+            phone=['+31-6-1234-5678', '+31-20-123-4567'],
+        )
+
+        partial_representation = {
+            'full_name': 'Bob',
+            'favorite_pet': {'animal': 'cat', 'name': 'Luna'}
+        }
+
+        expected_output = dataclasses.replace(input_instance, name='Bob', favorite_pet=Pet(animal='cat', name='Luna'))
+
+        serializer = PersonSerializer(instance=input_instance, data=partial_representation, partial=True)
+        serializer.is_valid(raise_exception=True)
+        output_instance = serializer.save()
+
+        self.assertIs(output_instance, input_instance)
+        self.assertEqual(output_instance, expected_output)
