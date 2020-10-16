@@ -11,6 +11,7 @@ import rest_framework.serializers
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model
 from django.utils.functional import cached_property
+from rest_framework.fields import empty
 from rest_framework.relations import HyperlinkedRelatedField, PrimaryKeyRelatedField
 from rest_framework.utils.field_mapping import get_relation_kwargs
 
@@ -20,6 +21,7 @@ from rest_framework_dataclasses.types import Dataclass
 
 
 # Define some types to make type hinting more readable
+AnyT = TypeVar('AnyT')
 KWArgs = Dict[str, Any]
 SerializerField = rest_framework.fields.Field
 SerializerFieldDefinition = Tuple[Type[SerializerField], KWArgs]
@@ -105,15 +107,30 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
     # Default `create` and `update` behavior...
 
+    def _strip_empty_sentinels(self, x: AnyT) -> AnyT:
+        """
+        Recursively strip the `empty` sentinel values from dataclasses, replacing them with their fields default value.
+        """
+        if dataclasses.is_dataclass(x) and not isinstance(x, type):
+            values = {field.name: self._strip_empty_sentinels(getattr(x, field.name)) for field in dataclasses.fields(x)
+                      if getattr(x, field.name) is not empty}
+            return type(x)(**values)
+        if isinstance(x, list):
+            return [self._strip_empty_sentinels(item) for item in x]
+        if isinstance(x, dict):
+            return {key: self._strip_empty_sentinels(value) for key, value in x.items()}
+        return x
+
     def create(self, validated_data: T) -> T:
-        return validated_data
+        # Create a new instance with all the `empty` sentinel values replaced by their defaults.
+        return self._strip_empty_sentinels(validated_data)
 
     def update(self, instance: T, validated_data: T) -> T:
-        for name, field in self.dataclass_definition.fields.items():
-            # Don't overwrite fields that weren't present in the serialized representation.
-            # noinspection PyProtectedMember
-            if name not in validated_data._unsupplied_fields:
-                setattr(instance, name, getattr(validated_data, name))
+        for name in self.dataclass_definition.fields.keys():
+            # Only update fields that have been set in the serialized representation.
+            value = getattr(validated_data, name)
+            if value is not empty:
+                setattr(instance, name, self._strip_empty_sentinels(value))
 
         return instance
 
@@ -135,13 +152,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         validated_data = dataclasses.replace(self.validated_data, **kwargs)
 
         if self.instance is not None:
-            # Remove fields supplied by kwargs from the list of unsupplied fields that shouldn't be overwritten.
-            # noinspection PyProtectedMember
-            validated_data._unsupplied_fields = [f for f in self.validated_data._unsupplied_fields if f not in kwargs]
-
             self.instance = self.update(self.instance, validated_data)
         else:
-            # We don't need to bother with unsupplied fields here, as there's nothing to overwrite anyway.
             self.instance = self.create(validated_data)
 
         assert self.instance is not None, (
@@ -505,12 +517,10 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         Convert a dictionary representation of the dataclass containing only primitive values to a dataclass instance.
         """
         native_values = super(DataclassSerializer, self).to_internal_value(data)
-        dataclass_type = self.dataclass_definition.dataclass_type
-        instance = dataclass_type(**native_values)
+        empty_values = {key: empty for key in self.dataclass_definition.fields.keys() if key not in native_values}
 
-        # Keep a list of the fields that have not been supplied in the serialized representation, so that we can avoid
-        # overwriting existing values for them in update().
-        instance._unsupplied_fields = [f for f in self.dataclass_definition.fields.keys() if f not in native_values]
+        dataclass_type = self.dataclass_definition.dataclass_type
+        instance = dataclass_type(**native_values, **empty_values)
 
         return instance
 
