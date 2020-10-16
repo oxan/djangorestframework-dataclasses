@@ -9,6 +9,7 @@ from django.core.exceptions import ImproperlyConfigured
 from rest_framework import fields, serializers
 from rest_framework.fields import empty
 
+from rest_framework_dataclasses import types
 from rest_framework_dataclasses.serializers import DataclassSerializer, HyperlinkedDataclassSerializer
 
 
@@ -311,6 +312,14 @@ class SerializerTest(TestCase):
         # Aliased to non-existing field
         with self.assertRaises(ImproperlyConfigured):
             unknown_field = serializer.create_field('aliased', {'source': 'nonexisting'})
+
+        # Final field with a default value
+        dc = dataclasses.make_dataclass('Person', [('species', types.Final[str], dataclasses.field(default='Human'))])
+        serializer = self.create_serializer(dc)
+
+        species_field = serializer.create_field('species', {})
+        self.assertIsInstance(species_field, fields.CharField)
+        self.assertTrue(species_field.read_only)
 
     def test_include_extra_kwargs(self):
         serializer = self.create_serializer()
