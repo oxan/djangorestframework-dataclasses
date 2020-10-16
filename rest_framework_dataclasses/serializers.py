@@ -115,6 +115,10 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             values = {field.name: self._strip_empty_sentinels(getattr(x, field.name)) for field in dataclasses.fields(x)
                       if getattr(x, field.name) is not empty}
             return type(x)(**values)
+        if isinstance(x, list):
+            return [self._strip_empty_sentinels(item) for item in x]
+        if isinstance(x, dict):
+            return {key: self._strip_empty_sentinels(value) for key, value in x.items()}
         return x
 
     def create(self, validated_data: T) -> T:

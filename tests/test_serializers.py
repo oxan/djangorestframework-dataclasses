@@ -22,6 +22,12 @@ class Person:
         return 1
 
 
+@dataclasses.dataclass
+class Group:
+    leader: Person
+    people: typing.List[Person]
+
+
 class SerializerTest(TestCase):
     def create_serializer(self, dataclass=None, arguments=None, declared=None, meta=None) -> DataclassSerializer:
         arguments = arguments or {}
@@ -63,6 +69,21 @@ class SerializerTest(TestCase):
         # non-dataclass
         with self.assertRaises(ValueError):
             definition = self.create_serializer(str).dataclass_definition
+
+    def test_strip_empty(self):
+        ser = self.create_serializer(Person)
+
+        # simple
+        in_data = Person(name='Alice', length=123, birth_date=empty)
+        out_data = Person(name='Alice', length=123, birth_date=None)
+        self.assertEqual(ser._strip_empty_sentinels(in_data), out_data)
+
+        # nested dataclasses
+        in_data = Group(leader=Person(name='Alice', length=123, birth_date=empty),
+                        people=[Person(name='Bob', length=456, birth_date=empty)])
+        out_data = Group(leader=Person(name='Alice', length=123),
+                         people=[Person(name='Bob', length=456)])
+        self.assertEqual(ser._strip_empty_sentinels(in_data), out_data)
 
     def test_save(self):
         def mock_save(validated_data, instance=None, **kwargs):
