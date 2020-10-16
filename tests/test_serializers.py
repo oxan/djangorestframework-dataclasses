@@ -314,7 +314,7 @@ class SerializerTest(TestCase):
             unknown_field = serializer.create_field('aliased', {'source': 'nonexisting'})
 
         # Final field with a default value
-        dc = dataclasses.make_dataclass('Person', [('species', types.Final[str], dataclasses.field(default='Human'))])
+        dc = dataclasses.make_dataclass('Person', [('species', types.Final, dataclasses.field(default='Human'))])
         serializer = self.create_serializer(dc)
 
         species_field = serializer.create_field('species', {})
