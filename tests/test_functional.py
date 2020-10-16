@@ -26,6 +26,7 @@ class Person:
     name: str
     email: str
     phone: typing.List[str]
+    length: typing.Optional[decimal.Decimal] = None
     pets: typing.Optional[typing.List[Pet]] = None
     birth_date: typing.Optional[datetime.date] = None
     favorite_pet: typing.Optional[Pet] = None
@@ -51,7 +52,8 @@ class PersonSerializer(DataclassSerializer):
 
     class Meta:
         dataclass = Person
-        fields = ('id', 'full_name', 'email', 'phone', 'pets', 'birth_date', 'favorite_pet', 'movie_ratings', 'slug', 'age')
+        fields = ('id', 'full_name', 'email', 'phone', 'length', 'pets', 'birth_date', 'favorite_pet', 'movie_ratings',
+                  'slug', 'age')
         extra_kwargs = {
             'id': {'format': 'hex'},
             'phone': {'child_kwargs': {'max_length': 15}},
@@ -99,6 +101,7 @@ class PersonTest(TestCase, FunctionalTestMixin):
         id=uuid.UUID('28ee3ae5-480b-46bd-9ae4-c61cf8341b95'),
         name='Alice',
         email='alice@example.com',
+        length=decimal.Decimal('1.68'),
         phone=['+31-6-1234-5678', '+31-20-123-4567'],
         pets=[Pet(animal='cat', name='Milo', weight=decimal.Decimal('10.8')),
               Pet(animal='dog', name='Max', weight=decimal.Decimal('123.4'))],
@@ -110,6 +113,7 @@ class PersonTest(TestCase, FunctionalTestMixin):
         'id': '28ee3ae5480b46bd9ae4c61cf8341b95',
         'full_name': 'Alice',
         'email': 'alice@example.com',
+        'length': '1.68',
         'phone': ['+31-6-1234-5678', '+31-20-123-4567'],
         'pets': [
             {'animal': 'cat', 'name': 'Milo', 'weight': '10.8'},
@@ -142,6 +146,7 @@ class EmptyPersonTest(TestCase, FunctionalTestMixin):
     }
     representation_readonly = {
         'slug': 'Alice',
+        'length': None,
         'pets': None,
         'birth_date': None,
         'age': None,
