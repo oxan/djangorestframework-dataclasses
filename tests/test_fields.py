@@ -23,7 +23,7 @@ class FieldsTest(unittest.TestCase):
 
     def check_field(self, type_hint, field, kwargs=None):
         field_class, field_kwargs = self.build_typed_field(type_hint)
-        self.assertIs(field, field_class, f'for field of type {type_hint}')
+        self.assertTrue(issubclass(field_class, field), f'for field of type {type_hint}')
 
         if kwargs is not None:
             self.assertDictEqual(field_kwargs, kwargs, f'arguments for field of type {type_hint}')

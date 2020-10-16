@@ -15,7 +15,7 @@ from rest_framework.fields import empty
 from rest_framework.relations import HyperlinkedRelatedField, PrimaryKeyRelatedField
 from rest_framework.utils.field_mapping import get_relation_kwargs
 
-from rest_framework_dataclasses import field_utils, typing_utils
+from rest_framework_dataclasses import fields, field_utils, typing_utils
 from rest_framework_dataclasses.field_utils import get_dataclass_definition, DataclassDefinition, TypeInfo
 from rest_framework_dataclasses.types import Dataclass
 
@@ -52,7 +52,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         float:              rest_framework.fields.FloatField,
         bool:               rest_framework.fields.BooleanField,
         str:                rest_framework.fields.CharField,
-        decimal.Decimal:    rest_framework.fields.DecimalField,
+        decimal.Decimal:    fields.DefaultDecimalField,
         datetime.date:      rest_framework.fields.DateField,
         datetime.datetime:  rest_framework.fields.DateTimeField,
         datetime.time:      rest_framework.fields.TimeField,
