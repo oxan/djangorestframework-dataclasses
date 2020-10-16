@@ -7,7 +7,7 @@ import uuid
 
 from unittest import TestCase
 
-from rest_framework import fields, serializers
+from rest_framework import fields
 
 from rest_framework_dataclasses.serializers import DataclassSerializer
 from rest_framework_dataclasses.types import Literal
@@ -138,12 +138,12 @@ class EmptyPersonTest(TestCase, FunctionalTestMixin):
         'full_name': 'Alice',
         'email': 'alice@example.com',
         'phone': [],
+        'favorite_pet': None,
+    }
+    representation_readonly = {
+        'slug': 'Alice',
         'pets': None,
         'birth_date': None,
         'age': None,
-        'favorite_pet': None,
         'movie_ratings': None
-    }
-    representation_readonly = {
-        'slug': 'Alice'
     }
