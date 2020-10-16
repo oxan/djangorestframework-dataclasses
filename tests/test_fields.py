@@ -1,6 +1,7 @@
 import dataclasses
 import datetime
 import decimal
+import re
 import sys
 import typing
 import unittest
@@ -144,12 +145,12 @@ class FieldsTest(unittest.TestCase):
 
     def test_standard_error(self):
         msg = ("Automatic serializer field deduction not supported for field 'test_field' on 'TestDataclass' "
-               "of type '<class 'complex'>'.")
-        with self.assertRaisesRegex(NotImplementedError, msg):
+               "of type '<class 'complex'>' (during search for field of type '<class 'complex'>').")
+        with self.assertRaisesRegex(NotImplementedError, re.escape(msg)):
             self.build_typed_field(complex)
 
         # Check _SpecialForm types that don't have an __mro__attribute (#6)
         msg = ("Automatic serializer field deduction not supported for field 'test_field' on 'TestDataclass' "
-               "of type 'typing.Any'.")
-        with self.assertRaisesRegex(NotImplementedError, msg):
+               "of type 'typing.Any' (during search for field of type 'None').")
+        with self.assertRaisesRegex(NotImplementedError, re.escape(msg)):
             self.build_typed_field(typing.Any)

@@ -388,8 +388,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             field_type = self.dataclass_definition.field_types[field_name]
             raise NotImplementedError(
                 "Automatic serializer field deduction not supported for field '{field}' on '{dataclass}' "
-                "of type '{type}'."
-                .format(dataclass=self.dataclass_definition.dataclass_type.__name__, field=field_name, type=field_type)
+                "of type '{type}' (during search for field of type '{reduced_type}')."
+                .format(dataclass=self.dataclass_definition.dataclass_type.__name__, field=field_name,
+                        type=field_type, reduced_type=type_info.base_type)
             )
 
     def build_relational_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:
