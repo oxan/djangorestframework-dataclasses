@@ -5,7 +5,7 @@ A `dataclasses <https://docs.python.org/3/library/dataclasses.html>`__ serialize
 <http://www.django-rest-framework.org/>`__.
 
 .. image:: https://github.com/oxan/djangorestframework-dataclasses/workflows/CI/badge.svg
-   :target: https://github.com/oxan/djangorestframework-dataclasses/actions?query=workflow%3ACI   
+   :target: https://github.com/oxan/djangorestframework-dataclasses/actions?query=workflow%3ACI
 .. image:: https://codecov.io/gh/oxan/djangorestframework-dataclasses/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/oxan/djangorestframework-dataclasses
 .. image:: https://badge.fury.io/py/djangorestframework-dataclasses.svg
@@ -293,10 +293,10 @@ serializer fields are generated:
 
 * The ``serializer_related_field`` is the serializer field class that is used for relations to models.
 
-* The ``build_unknown_typed_field()`` method is called to create serializer field classes for types that it does not
+* The ``build_unknown_field()`` method is called to create serializer field classes for types that it does not
   understand. By default this throws an error, but you can extend this with custom logic to create serializer fields.
 
-* The ``build_standard_field()``, ``build_relational_field()``, ``build_nested_field()`` and ``build_property_field()``
-  methods are used to process respectively fields, embedded models, embedded dataclasses and properties. These can be
-  overridden to change the field generation logic, but at that point it's usually a better idea to just declare the
-  field explicitly.
+* The ``build_standard_field()``, ``build_relational_field()``, ``build_nested_field()`` and ``build_composite_field()``
+  methods are used to process respectively fields, embedded models, embedded dataclasses and lists or dictionaries. 
+  These can be overridden to change the field generation logic, but at that point it's usually a better idea to just 
+  declare the field explicitly.
