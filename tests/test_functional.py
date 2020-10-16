@@ -150,7 +150,6 @@ class EmptyPersonTest(TestCase, FunctionalTestMixin):
 
 
 class PartialPersonTest(TestCase):
-    @expectedFailure
     def test_update(self):
         input_instance = Person(
             id=uuid.UUID('28ee3ae5-480b-46bd-9ae4-c61cf8341b95'),

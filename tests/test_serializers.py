@@ -7,6 +7,8 @@ from unittest import TestCase
 
 from django.core.exceptions import ImproperlyConfigured
 from rest_framework import fields, serializers
+from rest_framework.fields import empty
+
 from rest_framework_dataclasses.serializers import DataclassSerializer
 
 
@@ -67,8 +69,6 @@ class SerializerTest(TestCase):
             serializer = self.create_serializer(Person)
             serializer._errors = []
             serializer._validated_data = validated_data
-            if not hasattr(serializer._validated_data, '_unsupplied_fields'):
-                serializer._validated_data._unsupplied_fields = []
             if instance:
                 serializer.instance = instance
             return serializer.save(**kwargs)
@@ -106,11 +106,18 @@ class SerializerTest(TestCase):
 
         # full update with unsupplied optional field
         inst = Person(name='Alice', length=123, birth_date=datetime.datetime(2020, 2, 2))
-        in_data = Person(name='Alice', length=123)
-        in_data._unsupplied_fields = ["birth_date"]
+        in_data = Person(name='Alice', length=123, birth_date=empty)
         out_data = mock_save(in_data, instance=inst)
         self.assertIs(out_data, inst)
         self.assertEqual(out_data.birth_date, datetime.datetime(2020, 2, 2))
+
+        # partial update with missing required field
+        inst = Person(name='Alice', length=123)
+        in_data = Person(name='Bob', length=empty)
+        out_data = mock_save(in_data, instance=inst)
+        self.assertIs(out_data, inst)
+        self.assertEqual(out_data.name, 'Bob')
+        self.assertEqual(out_data.length, 123)
 
         # not validated
         with self.assertRaises(AssertionError):
@@ -323,12 +330,15 @@ class SerializerTest(TestCase):
         # simple
         value = ser.to_internal_value({'name': 'Alice', 'length': 123, 'birth_date': '2020-02-02'})
         self.assertEqual(value, Person(name='Alice', length=123, birth_date=datetime.date(2020, 2, 2)))
-        self.assertEqual(value._unsupplied_fields, [])
 
         # unsupplied fields
         value = ser.to_internal_value({'name': 'Alice', 'length': 123})
-        self.assertEqual(value, Person(name='Alice', length=123))
-        self.assertEqual(value._unsupplied_fields, ["birth_date"])
+        self.assertEqual(value, Person(name='Alice', length=123, birth_date=empty))
+
+        # unsupplied required fields (in partial mode)
+        ser = self.create_serializer(Person, arguments={'partial': True})
+        value = ser.to_internal_value({'name': 'Alice'})
+        self.assertEqual(value, Person(name='Alice', length=empty, birth_date=empty))
 
         # nested
         simple = dataclasses.make_dataclass('child', [('value', str)])
