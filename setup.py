@@ -32,7 +32,7 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Typing :: Typed'
     ],
-    packages=find_packages(),
+    packages=find_packages(exclude=['tests']),
     package_data={
         'rest_framework_dataclasses': ['py.typed']
     },
