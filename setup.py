@@ -8,7 +8,7 @@ with open('README.rst', 'r') as fp:
 
 setup(
     name='djangorestframework-dataclasses',
-    version='0.6',
+    version='0.7',
     description='A dataclasses serializer for Django REST Framework',
     long_description=long_description,
     long_description_content_type='text/x-rst',

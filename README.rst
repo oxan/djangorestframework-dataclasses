@@ -32,7 +32,7 @@ Installation
 Changes
 -------
 
-See `CHANGELOG.rst <CHANGELOG.rst>`__. There have been no backward-incompatible changes yet.
+See `CHANGELOG.rst <CHANGELOG.rst>`__.
 
 Basic usage
 -----------

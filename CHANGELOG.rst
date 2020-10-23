@@ -1,3 +1,23 @@
+0.7, 23 October 2020
+--------------------
+Breaking changes:
+
+* The ``validated_data`` representation now contains the
+  ``rest_framework.fields.empty`` sentinel value for fields where no value was
+  provided, instead of the default of the dataclass field. The value returned by
+  ``save()`` is unchanged. This was necessary to support partial updates.
+
+Features & fixes:
+
+* Improved Python 3.9 compatibility.
+* Support partial updates.
+* Support standard collection generics (PEP 585).
+* Support non-generic ``list`` and ``dict`` typehints.
+* Support final fields (PEP 591).
+* Support auto-generation for list or dictionaries of Any or variable type.
+* Set default ``max_digits`` and ``decimal_places`` for ``DecimalField``.
+* Improved error message when automatic field type deduction fails.
+
 0.6, 17 April 2020
 ------------------
 * Rewrite to ``save()`` implementation to finally fix all issues with nested
