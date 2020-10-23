@@ -2,10 +2,9 @@
 --------------------
 Breaking changes:
 
-* The ``validated_data`` representation now contains the
-  ``rest_framework.fields.empty`` sentinel value for fields where no value was
-  provided, instead of the default of the dataclass field. The value returned by
-  ``save()`` is unchanged. This was necessary to support partial updates.
+* The ``validated_data`` representation now contains the ``rest_framework.fields.empty`` sentinel value for fields where
+  no value was provided, instead of the default of the dataclass field. The value returned by ``save()`` is unchanged.
+  This was necessary to support partial updates.
 
 Features & fixes:
 
@@ -20,8 +19,7 @@ Features & fixes:
 
 0.6, 17 April 2020
 ------------------
-* Rewrite to ``save()`` implementation to finally fix all issues with nested
-  serializers.
+* Rewrite to ``save()`` implementation to finally fix all issues with nested serializers.
 * Fix deserialization for fields using ``source`` option.
 * Fix explicit specification of a method in the ``fields`` option.
 
@@ -36,7 +34,7 @@ Features & fixes:
 
 0.4, 03 February 2020
 ---------------------
-* Automatically recognize ``Literal``-typed fields.
+* Automatically recognize ``Literal``-typed fields (PEP 586).
 * Fix deserialization of dataclasses inside dictionaries.
 * Improve error message when encountering field with a special form type.
 

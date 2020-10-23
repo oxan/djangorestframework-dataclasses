@@ -29,10 +29,12 @@ Installation
 
     $ pip install djangorestframework-dataclasses
 
-Changes
--------
+This package follows `semantic versioning`_. See `CHANGELOG`_ for breaking changes and new features, and `LICENSE`_ for
+the complete license (BSD-3-clause).
 
-See `CHANGELOG.rst <CHANGELOG.rst>`__.
+.. _`semantic versioning`: https://semver.org/
+.. _`CHANGELOG`: https://github.com/oxan/djangorestframework-dataclasses/blob/master/CHANGELOG.rst
+.. _`LICENSE`: https://github.com/oxan/djangorestframework-dataclasses/blob/master/LICENSE
 
 Basic usage
 -----------
@@ -225,12 +227,12 @@ The ``extra_kwargs`` option can be nested, in order to provide kwargs to fields 
 Consider the following:
 
 .. code:: Python
-    
+
     @dataclass
     class Transaction:
        amount: Decimal
        account_number: str
-    
+
     @dataclass
     class Company:
        sales: List[Transaction]
@@ -242,7 +244,7 @@ In order to tell DRF to give 2 decimal places to the transaction account number,
     class CompanySerializer(DataclassSerializer):
         class Meta:
             dataclass = Company
-            
+
             extra_kwargs = {
                 'sales': {
                     'child_kwargs': { # Required because sales is a List, otherwise you could have the extra_kwargs directly
@@ -297,6 +299,6 @@ serializer fields are generated:
   understand. By default this throws an error, but you can extend this with custom logic to create serializer fields.
 
 * The ``build_standard_field()``, ``build_relational_field()``, ``build_nested_field()`` and ``build_composite_field()``
-  methods are used to process respectively fields, embedded models, embedded dataclasses and lists or dictionaries. 
-  These can be overridden to change the field generation logic, but at that point it's usually a better idea to just 
+  methods are used to process respectively fields, embedded models, embedded dataclasses and lists or dictionaries.
+  These can be overridden to change the field generation logic, but at that point it's usually a better idea to just
   declare the field explicitly.
