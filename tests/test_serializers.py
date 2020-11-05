@@ -376,6 +376,13 @@ class SerializerTest(TestCase):
         value = self.create_serializer(parent).to_internal_value({'container': {'value': 'a'}})
         self.assertEqual(value, parent(container=simple(value='a')))
 
+    def test_validated_data(self):
+        data = {'name': 'Alice', 'length': 123}
+        ser = self.create_serializer(Person, arguments={'data': data})
+        ser.is_valid(raise_exception=True)
+
+        self.assertEqual(ser.validated_data, Person(name='Alice', length=123, birth_date=None))
+
     def test_hyperlinked(self):
         # test if it nests itself, as opposed to the "default" DataclassSerializer
         ser = HyperlinkedDataclassSerializer(dataclass=Group)

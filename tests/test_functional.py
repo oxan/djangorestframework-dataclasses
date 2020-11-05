@@ -67,6 +67,12 @@ class FunctionalTestMixin:
         serializer = self.serializer(instance=self.instance)
         self.assertDictEqual(serializer.data, {**self.representation, **self.representation_readonly})
 
+    def test_validated_data(self):
+        serializer = self.serializer(data=self.representation)
+        serializer.is_valid(raise_exception=True)
+
+        self.assertEqual(serializer.validated_data, self.instance)
+
     def test_create(self: TestCase):
         serializer = self.serializer(data=self.representation)
         serializer.is_valid(raise_exception=True)
