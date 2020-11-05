@@ -149,7 +149,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             "inspect 'serializer.validated_data' instead. "
         )
 
-        validated_data = dataclasses.replace(self.validated_data, **kwargs)
+        # Explicitly use internal validated_data here, as we want the empty sentinel values instead of the normalized
+        # external representation.
+        validated_data = dataclasses.replace(self._validated_data, **kwargs)
 
         if self.instance is not None:
             self.instance = self.update(self.instance, validated_data)
@@ -529,6 +531,11 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         instance = dataclass_type(**native_values, **empty_values)
 
         return instance
+
+    @cached_property
+    def validated_data(self):
+        internal_validated_data = super(DataclassSerializer, self).validated_data
+        return self._strip_empty_sentinels(internal_validated_data)
 
 
 class HyperlinkedDataclassSerializer(DataclassSerializer):
