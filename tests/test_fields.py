@@ -50,6 +50,9 @@ class FieldsTest(unittest.TestCase):
         self.check_field(typing.Dict, fields.DictField, {})
         self.check_field(dict, fields.DictField, {})
 
+        self.check_field(typing.Optional[typing.List[str]], fields.ListField)
+        self.check_field(typing.Optional[typing.Dict[str, int]], fields.DictField)
+
         # check that kwargs generated for the child field are actually applied
         _, list_kwargs = self.build_typed_field(typing.List[typing.Optional[str]])
         self.assertIsInstance(list_kwargs['child'], fields.CharField)
