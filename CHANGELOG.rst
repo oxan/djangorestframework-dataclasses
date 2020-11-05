@@ -1,9 +1,13 @@
-0.8, pending
-------------
+0.8, 6 November 2020
+--------------------
 Breaking changes:
 
 * The ``validated_data`` representation no longer contains the ``rest_framework.fields.empty`` sentinel value for
   unsupplied fields. This reverts the breaking change from v0.7.
+
+Features & fixes:
+
+* Don't install tests into distributed packages.
 
 0.7, 23 October 2020
 --------------------
