@@ -20,7 +20,7 @@ class Person:
     birth_date: typing.Optional[datetime.date] = None
 
     def age(self) -> int:
-        return 1
+        pass
 
 
 @dataclasses.dataclass
