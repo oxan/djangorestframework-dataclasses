@@ -404,7 +404,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         """
         Create fields for models.
         """
-        relation_info = field_utils.get_relation_info(self.dataclass_definition, type_info)
+        relation_info = field_utils.get_relation_info(type_info)
         field_class = self.serializer_related_field
         field_kwargs = get_relation_kwargs(field_name, relation_info)
 

@@ -72,14 +72,19 @@ def get_type_info(tp: type, default_value_type: typing.Optional[type] = None) ->
     return TypeInfo(is_many, is_mapping, is_final, is_optional, tp)
 
 
-def get_relation_info(definition: DataclassDefinition, type_info: TypeInfo) -> RelationInfo:
-    # TODO needs checks first
+def get_relation_info(type_info: TypeInfo) -> RelationInfo:
+    """
+    Given a type_info that references a Model, extract the RelationInfo.
+    """
     return RelationInfo(
+        # there's no foreign key field
         model_field=None,
         related_model=type_info.base_type,
         to_many=type_info.is_many,
+        # as there's no foreign key, it also cannot reference a field on the referenced model
         to_field=None,
         has_through_model=False,
+        # we're never the model
         reverse=False
     )
 

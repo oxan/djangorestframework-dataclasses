@@ -8,7 +8,9 @@ import unittest
 import uuid
 from collections import abc
 
-from rest_framework import fields
+import django
+from django.db import models
+from rest_framework import fields, relations
 
 from rest_framework_dataclasses import field_utils
 from rest_framework_dataclasses.serializers import DataclassSerializer
@@ -101,8 +103,18 @@ class FieldsTest(unittest.TestCase):
                          {'dataclass': refclass, 'many': False, 'required': False, 'allow_null': True})
 
     def test_relational(self):
-        # TODO
-        pass
+        django.setup()
+
+        class Person(models.Model):
+            name = models.CharField(max_length=30)
+
+            class Meta:
+                app_label = 'tests'
+
+        self.check_field(Person, relations.PrimaryKeyRelatedField,
+                         {'queryset': Person._default_manager})
+        self.check_field(typing.Optional[Person], relations.PrimaryKeyRelatedField,
+                         {'queryset': Person._default_manager, 'required': False, 'allow_null': True})
 
     def test_literal(self):
         self.check_field(Literal['a', 'b'], fields.ChoiceField,
