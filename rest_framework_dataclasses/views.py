@@ -8,14 +8,15 @@ from rest_framework.response import Response
 from rest_framework.settings import api_settings
 
 from rest_framework_dataclasses import typing_utils
-from rest_framework_dataclasses.serializers import DataclassSerializer
+from rest_framework_dataclasses.settings import dataclass_serializer_settings
 
 
 def _make_dataclass_serializer(dataclass: type, serializer_fields: Dict[str, Any] = None):
     if not serializer_fields:
         serializer_fields = {}
     serializer_fields['Meta'] = type('Meta', (), {'dataclass': dataclass})
-    serializer_type = type(f'{dataclass.__name__}Serializer', (DataclassSerializer, ), serializer_fields)
+    serializer_parents = (dataclass_serializer_settings.DEFAULT_DATACLASS_SERIALIZER, )
+    serializer_type = type(f'{dataclass.__name__}Serializer', serializer_parents, serializer_fields)
     return serializer_type
 
 
