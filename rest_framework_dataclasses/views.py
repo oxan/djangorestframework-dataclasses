@@ -39,7 +39,6 @@ def typed_view(view_function: Callable = None, *, body: str = '', serializers: D
     if not view_function:
         return functools.partial(typed_view, body=body, serializers=serializers)
 
-    primitive_types = (bool, float, int, str)
     if not serializers:
         serializers = {}
 
@@ -51,9 +50,9 @@ def typed_view(view_function: Callable = None, *, body: str = '', serializers: D
     is_method = bool(inject_parameters.pop('self', None))
 
     # If it isn't explicitly specified for which parameter the request body should be used, use it for the first
-    # non-primitive parameter, if there is any.
+    # dataclass parameter, if there is any.
     if body == '':
-        body = next((name for name, (hint, _) in inject_parameters.items() if hint not in primitive_types), None)
+        body = next((name for name, (hint, _) in inject_parameters.items() if dataclasses.is_dataclass(hint)), None)
     elif body not in inject_parameters:
         raise Exception(f'The specified body parameter {body} on typed view {view_function.__qualname__} does not '
                         f'exist.')
@@ -63,14 +62,6 @@ def typed_view(view_function: Callable = None, *, body: str = '', serializers: D
         if hint is None and default is inspect.Parameter.empty:
             raise Exception(f'Typed view {view_function.__qualname__} parameter {name} must have type annotation or '
                             f'default value.')
-
-        if hint is not None and hint not in primitive_types and not dataclasses.is_dataclass(hint):
-            raise Exception(f'To inject typed view {view_function.__qualname__} parameter {name}, it must be a '
-                            f'primitive or dataclass type.')
-
-        if hint is not None and hint not in primitive_types and body != name:
-            raise Exception(f'Non-primitive parameter {name} on typed view {view_function.__qualname__} can only '
-                            f'be injected with request body, but request body is used for parameter {body}.')
 
     # Determine serializer for the request, if there is something to inject.
     request_serializer_type = None
