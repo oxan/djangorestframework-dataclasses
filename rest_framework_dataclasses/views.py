@@ -4,6 +4,7 @@ import inspect
 import typing
 from typing import Iterable, Tuple, Any, Dict, Callable
 
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.settings import api_settings
 
@@ -63,6 +64,10 @@ def typed_view(view_function: Callable = None, *, body: str = '', serializers: D
             raise Exception(f'Typed view {view_function.__qualname__} parameter {name} must have type annotation or '
                             f'default value.')
 
+    # Determine where we (optionally) have to inject the request.
+    request_parameter = next((key for key, (hint, default) in inject_parameters.items() if hint is Request), None)
+    inject_parameters.pop(request_parameter, None)
+
     # Determine serializer for the request, if there is something to inject.
     request_serializer_type = None
     if len(inject_parameters) > 0:
@@ -107,6 +112,9 @@ def typed_view(view_function: Callable = None, *, body: str = '', serializers: D
         serializer_context = {'request': request, 'format': kwargs.get(api_settings.FORMAT_SUFFIX_KWARG, None)}
         if is_method:
             serializer_context['view'] = view_args[0]
+
+        if request_parameter is not None:
+            view_kwargs[request_parameter] = request
 
         if request_serializer_type is not None:
             if request_optimized:
