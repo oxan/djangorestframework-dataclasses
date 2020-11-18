@@ -339,7 +339,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         if type_info.is_mapping or type_info.is_many:
             field_class, field_kwargs = self.build_composite_field(field_name, type_info, extra_kwargs)
         elif dataclasses.is_dataclass(type_info.base_type):
-            field_class, field_kwargs = self.build_nested_field(field_name, type_info)
+            field_class, field_kwargs = self.build_dataclass_field(field_name, type_info)
         elif isinstance(type_info.base_type, type) and issubclass(type_info.base_type, Model):
             field_class, field_kwargs = self.build_relational_field(field_name, type_info)
         elif typing_utils.is_literal_type(type_info.base_type):
@@ -433,7 +433,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
         return field_class, field_kwargs
 
-    def build_nested_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:
+    def build_dataclass_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:
         """
         Create fields for dataclasses.
         """
@@ -547,7 +547,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 class HyperlinkedDataclassSerializer(DataclassSerializer):
     serializer_related_field = HyperlinkedRelatedField
 
-    def build_nested_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:
+    def build_dataclass_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:
         """
         Create fields for dataclasses.
         """
