@@ -2,14 +2,18 @@ import dataclasses
 import functools
 import inspect
 import typing
+from collections import namedtuple
 from typing import Iterable, Tuple, Any, Dict, Callable
 
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.settings import api_settings
 
-from rest_framework_dataclasses import typing_utils
+from rest_framework_dataclasses import field_utils
 from rest_framework_dataclasses.settings import dataclass_serializer_settings
+
+
+_FieldDefinition = namedtuple('_FieldDefinition', ('name', 'hint', 'type_info', 'has_default', 'default', 'serializer'))
 
 
 def _make_dataclass_serializer(dataclass: type, serializer_fields: Dict[str, Any] = None):
@@ -21,15 +25,14 @@ def _make_dataclass_serializer(dataclass: type, serializer_fields: Dict[str, Any
     return serializer_type
 
 
-def _make_serializer(name: str, fields: Iterable[Tuple[str, type, bool, Any, type]]):
+def _make_serializer(name: str, fields: Iterable[_FieldDefinition]):
     dataclass_fields = []
     serializer_fields = {}
-    for field_name, annotation, has_default, default, serializer in fields:
-        default = default if has_default else dataclasses.MISSING
-        dataclass_fields.append((field_name, annotation, dataclasses.field(default=default)))
-        if serializer is not None:
-            is_many = typing_utils.is_iterable_type(annotation)
-            serializer_fields[field_name] = serializer(many=is_many)
+    for field in fields:
+        default = field.default if field.has_default else dataclasses.MISSING
+        dataclass_fields.append((field.name, field.hint, dataclasses.field(default=default)))
+        if field.serializer is not None:
+            serializer_fields[field.name] = field.serializer(many=field.type_info.is_many)
 
     dataclass = dataclasses.make_dataclass(name, dataclass_fields)
     return dataclass, _make_dataclass_serializer(dataclass, serializer_fields)
@@ -80,9 +83,11 @@ def typed_view(view_function: Callable = None, *, body: str = '', serializers: D
         else:
             # Generic case: when more than just the body is injected, construct a dataclass type to deserialize all
             # parameters into.
-            request_fields = [(name, hint, default != inspect.Parameter.empty, default, serializers.get(name, None))
-                              for name, (hint, default) in inject_parameters.items()]
-            request_dataclass, request_serializer_type = _make_serializer('Request', request_fields)
+            request_fields = {name: _FieldDefinition(name, hint, field_utils.get_type_info(hint),
+                                                     default != inspect.Parameter.empty, default,
+                                                     serializers.get(name, None))
+                              for name, (hint, default) in inject_parameters.items()}
+            request_dataclass, request_serializer_type = _make_serializer('Request', request_fields.values())
             request_optimized = False
 
     # Determine serializer for the response.
@@ -97,7 +102,9 @@ def typed_view(view_function: Callable = None, *, body: str = '', serializers: D
             response_optimized = True
         else:
             # Generic case: construct a dataclass type to serialize the result from.
-            response_fields = [('response', signature_hints['return'], False, None, serializers.get('return', None))]
+            response_fields = [_FieldDefinition('response', signature_hints['return'],
+                                                field_utils.get_type_info(signature_hints['return']),
+                                                False, None, serializers.get('return', None))]
             response_dataclass, response_serializer_type = _make_serializer('Response', response_fields)
             response_optimized = False
 
@@ -122,8 +129,9 @@ def typed_view(view_function: Callable = None, *, body: str = '', serializers: D
                 request_serializer.is_valid(raise_exception=True)
                 view_kwargs[body] = request_serializer.save()
             else:
-                # Get rid of query parameters being multiple valued
-                request_data = {k: v for k, v in request.query_params.items()}
+                # Get rid of query parameters being multiple valued when not requested.
+                request_data = {k: v if request_fields[k].type_info.is_many else v[-1]
+                                for k, v in request.query_params.lists() if k in request_fields}
                 if body is not None:
                     request_data[body] = request.data
 
