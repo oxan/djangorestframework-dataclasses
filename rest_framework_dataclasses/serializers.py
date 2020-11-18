@@ -4,7 +4,7 @@ import datetime
 import decimal
 import uuid
 from collections import OrderedDict
-from typing import Any, Dict, Generic, Mapping, List, Tuple, Type, TypeVar
+from typing import Any, Dict, Generic, Iterable, Mapping, Tuple, Type, TypeVar
 
 import rest_framework.fields
 import rest_framework.serializers
@@ -21,11 +21,11 @@ from rest_framework_dataclasses.types import Dataclass
 
 
 # Define some types to make type hinting more readable
-AnyT = TypeVar('AnyT')
 KWArgs = Dict[str, Any]
 SerializerField = rest_framework.fields.Field
 SerializerFieldDefinition = Tuple[Type[SerializerField], KWArgs]
 T = TypeVar('T', bound=Dataclass)
+AnyT = TypeVar('AnyT')
 
 
 # noinspection PyMethodMayBeStatic
@@ -42,8 +42,6 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
     If the `DataclassSerializer` class *doesn't* generate the set of fields that you need you should either declare the
     extra/differing fields explicitly on the serializer class, or simply use a `Serializer` class.
-
-    Note that this implementation is heavily based on that of ModelSerializer in the rest_framework source code.
     """
 
     # The mapping of field types to serializer fields
@@ -64,6 +62,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         list:               rest_framework.fields.ListField
     }
     serializer_related_field = PrimaryKeyRelatedField
+
+    # Type hints
+    _declared_fields: Mapping[str, SerializerField]
 
     # Override constructor to allow "anonymous" usage by passing the dataclass type and extra kwargs as a constructor
     # parameter instead of via a Meta class.
@@ -89,12 +90,14 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
                 "Class '{serializer_class}' missing `Meta` attribute."
                 .format(serializer_class=self.__class__.__name__)
             )
-            assert hasattr(self.Meta, 'dataclass'), (
+
+            meta = getattr(self, 'Meta')
+            assert hasattr(meta, 'dataclass'), (
                 "Class '{serializer_class}' missing `Meta.dataclass` attribute."
                 .format(serializer_class=self.__class__.__name__)
             )
 
-            dataclass_type = self.Meta.dataclass
+            dataclass_type = meta.dataclass
 
         # Make sure we're dealing with an actual dataclass.
         if not dataclasses.is_dataclass(dataclass_type):
@@ -171,6 +174,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         Return the dict of field names -> field instances that should be used for `self.fields` when instantiating the
         serializer.
         """
+        # Copy declared fields, so that the field on the serializer class remains unchanged when the fields are bound to
+        # the serializer instance.
         declared_fields = copy.deepcopy(self._declared_fields)
 
         # Determine all fields that should be included on the serializer.
@@ -201,14 +206,14 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
     # Methods for determining the set of field names to include...
 
-    def get_field_names(self) -> List[str]:
+    def get_field_names(self) -> Iterable[str]:
         """
         Returns the list of all field names that should be created when instantiating this serializer class. This is
         based on the default set of fields, but also takes into account the `Meta.fields` or `Meta.exclude` options
         if they have been specified.
         """
-        # Retrieve metadata about the declared fields.
-        declared_fields = self._declared_fields
+        # Retrieve names of the declared fields.
+        declared_field_names = self._declared_fields.keys()
 
         # Read configuration from Meta class.
         meta = getattr(self, 'Meta', None)
@@ -242,7 +247,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             assert (
                 field_name == rest_framework.serializers.ALL_FIELDS or                         # all fields magic option
                 field_name in self.dataclass_definition.fields or                              # dataclass fields
-                field_name in declared_fields or                                               # declared fields
+                field_name in declared_field_names or                                          # declared fields
                 callable(getattr(self.dataclass_definition.dataclass_type, field_name, None))  # methods
             ), (
                 "The field '{field_name}' was included on serializer {serializer_class} in the `fields` option, "
@@ -254,7 +259,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             # If there are only explicitly specified fields, ensure that all declared fields are included. Do not
             # require any fields that are declared in a parent class, in order to allow serializer subclasses to only
             # include a subset of fields.
-            required_field_names = set(declared_fields)
+            required_field_names = set(declared_field_names)
             for cls in self.__class__.__bases__:
                 required_field_names -= set(getattr(cls, '_declared_fields', []))
 
@@ -269,12 +274,12 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         # The field list now includes the magic all fields option, so replace it with the default field names.
         fields = list(fields)
         fields.remove(rest_framework.serializers.ALL_FIELDS)
-        fields.extend(self.get_default_field_names(declared_fields))
+        fields.extend(self.get_default_field_names(declared_field_names))
 
         if exclude is not None:
             # If `Meta.exclude` is included, then remove those fields.
             for field_name in exclude:
-                assert field_name not in declared_fields, (
+                assert field_name not in declared_field_names, (
                     "Cannot both declare the field '{field_name}' and include it in '{serializer_class}' `exclude` "
                     "option. Remove the field or, if inherited from a parent serializer, disable with "
                     "`{field_name} = None`."
@@ -291,7 +296,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
         return fields
 
-    def get_default_field_names(self, declared_fields: Mapping[str, SerializerField]) -> List[str]:
+    def get_default_field_names(self, declared_fields: Iterable[str]) -> Iterable[str]:
         """
         Return the default list of field names that will be used if the `Meta.fields` option is not specified.
         """
@@ -414,6 +419,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
         return field_class, field_kwargs
 
+    # noinspection PyUnusedLocal
     def build_literal_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:
         """
         Create ChoiceField from a Literal[...] type.
@@ -437,6 +443,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
         return field_class, field_kwargs
 
+    # noinspection PyUnusedLocal
     def build_property_field(self, field_name: str) -> SerializerFieldDefinition:
         """
         Create a read only field for dataclass methods and properties.
@@ -502,14 +509,13 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
                     "The `read_only_fields` option must be a list or tuple. Got '{type}'."
                     .format(type=type(read_only_fields).__name__)
                 )
+
             for field_name in read_only_fields:
                 kwargs = extra_kwargs.get(field_name, {})
                 kwargs['read_only'] = True
                 extra_kwargs[field_name] = kwargs
-
         else:
-            # Guard against the possible misspelling `readonly_fields` (used
-            # by the Django admin and others).
+            # Guard against the possible misspelling `readonly_fields` (used by the Django admin and others).
             assert not hasattr(meta, 'readonly_fields'), (
                 "Serializer '{serializer_class}' has field `readonly_fields`; the correct spelling for the option is "
                 "`read_only_fields`."
