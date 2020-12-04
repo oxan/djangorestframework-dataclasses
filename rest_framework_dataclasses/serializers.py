@@ -56,8 +56,6 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         datetime.time:      rest_framework.fields.TimeField,
         datetime.timedelta: rest_framework.fields.DurationField,
         uuid.UUID:          rest_framework.fields.UUIDField,
-        # Note that these are only used for class typehints, typing.Dict and typing.List are handled by
-        # build_composite_field().
         dict:               rest_framework.fields.DictField,
         list:               rest_framework.fields.ListField
     }
@@ -361,10 +359,11 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         """
         Create a composite (mapping or list) field.
         """
+        # Lookup the types from the field mapping, so that it can easily be changed without overriding the method.
         if type_info.is_mapping:
-            field_class = rest_framework.fields.DictField
+            field_class = self.serializer_field_mapping[dict]
         else:
-            field_class = rest_framework.fields.ListField
+            field_class = self.serializer_field_mapping[list]
 
         # If the base type is not specified or is any type, we don't have to bother creating the child field.
         if type_info.base_type is None:
