@@ -207,15 +207,12 @@ def is_type_variable(tp: type) -> bool:
     return isinstance(tp, typing.TypeVar)
 
 
-def get_variable_types(tp: typing.TypeVar) -> typing.Optional[typing.List[type]]:
-    """
-    Get the possible types for a variable type.
-    """
-    return list(tp.__constraints__) if len(tp.__constraints__) > 0 else None
-
-
 def get_variable_type_substitute(tp: typing.TypeVar) -> type:
     """
     Get the substitute for a variable type.
     """
-    return typing.Union[tp.__constraints__] if len(tp.__constraints__) > 0 else typing.Any
+    if len(tp.__constraints__) > 0:
+        return typing.Union[tp.__constraints__]
+    if tp.__bound__ is not None:
+        return tp.__bound__
+    return typing.Any

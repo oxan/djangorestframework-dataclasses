@@ -149,6 +149,15 @@ class FieldsTest(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             self.check_field(Final, fields.CharField, {'read_only': True})
 
+    def test_standard_variable(self):
+        var_str = typing.TypeVar('var_str', bound=str)
+        var_any = typing.TypeVar('var_any')
+
+        self.check_field(var_str, fields.CharField)
+
+        with self.assertRaises(NotImplementedError):
+            self.build_typed_field(var_any)
+
     def test_standard_decimal(self):
         self.check_field(decimal.Decimal, fields.DecimalField)
 

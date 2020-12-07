@@ -123,14 +123,14 @@ class TypingTest(unittest.TestCase):
     def test_variable_type(self):
         T = typing.TypeVar('T')
         U = typing.TypeVar('U', int, str)
+        V = typing.TypeVar('V', bound=Exception)
 
         self.assertTrue(typing_utils.is_type_variable(T))
         self.assertTrue(typing_utils.is_type_variable(U))
+        self.assertTrue(typing_utils.is_type_variable(V))
         self.assertFalse(typing_utils.is_type_variable(int))
         self.assertFalse(typing_utils.is_type_variable(typing.List))
 
-        self.assertIsNone(typing_utils.get_variable_types(T))
-        self.assertListEqual(typing_utils.get_variable_types(U), [int, str])
-
         self.assertEqual(typing_utils.get_variable_type_substitute(T), typing.Any)
         self.assertEqual(typing_utils.get_variable_type_substitute(U), typing.Union[int, str])
+        self.assertEqual(typing_utils.get_variable_type_substitute(V), Exception)
