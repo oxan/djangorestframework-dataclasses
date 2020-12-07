@@ -330,7 +330,7 @@ serializer fields are generated:
 
 * The ``serializer_field_mapping`` property contains a dictionary that maps types to REST framework serializer classes.
   You can override or extend this mapping to change the serializer field classes that are used for fields based on
-  their type.
+  their type. This dictionary also accepts dataclasses as keys to change the serializer used for nested dataclass.
 
 * The ``serializer_related_field`` property is the serializer field class that is used for relations to models.
 

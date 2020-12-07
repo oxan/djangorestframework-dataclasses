@@ -1,3 +1,16 @@
+0.9, TBD
+--------
+Breaking changes:
+
+* ``build_nested_field()`` was renamed to ``build_dataclass_field()``.
+
+Features & fixes:
+
+* Support overriding serializer for a nested dataclass using ``serializer_field_mapping``.
+* Support overriding serializer for all nested dataclasses using ``serializer_dataclass_field`` property.
+* Support partial updates of nested dataclasses.
+* Support bound type variables.
+
 0.8, 6 November 2020
 --------------------
 Breaking changes:
