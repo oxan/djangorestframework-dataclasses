@@ -334,6 +334,11 @@ serializer fields are generated:
 
 * The ``serializer_related_field`` property is the serializer field class that is used for relations to models.
 
+* The ``serializer_dataclass_field`` property is the serializer field class that is used for nested dataclasses. If you
+  subclass ``DataclassSerializer`` to customize behaviour, you probably want to change this property to use the subclass
+  as well. Note that since Python process the class body before it defines the class, this property is implemented using
+  the `property decorator`_ to allow it to reference the containing class.
+
 * The ``build_unknown_field()`` method is called to create serializer fields for dataclass fields that are not
   understood. By default this just throws an error, but you can extend this with custom logic to create serializer
   fields.
@@ -349,3 +354,4 @@ Note that until version 1.0 these API's are not declared stable yet and might ch
 
 .. _`PEP 591`: https://www.python.org/dev/peps/pep-0591/
 .. _`PEP 585`: https://www.python.org/dev/peps/pep-0585/
+.. _`property decorator`: https://docs.python.org/3/library/functions.html#property

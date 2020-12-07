@@ -61,6 +61,12 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
     }
     serializer_related_field = PrimaryKeyRelatedField
 
+    # Unfortunately this cannot be an actual field as Python processes the class before it defines the class, but this
+    # comes close enough.
+    @property
+    def serializer_dataclass_field(self):
+        return DataclassSerializer
+
     # Type hints
     _declared_fields: Mapping[str, SerializerField]
 
@@ -433,7 +439,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         """
         Create fields for dataclasses.
         """
-        field_class = DataclassSerializer
+        field_class = self.serializer_dataclass_field
         field_kwargs = {'dataclass': type_info.base_type,
                         'many': type_info.is_many}
 
@@ -543,12 +549,6 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 class HyperlinkedDataclassSerializer(DataclassSerializer):
     serializer_related_field = HyperlinkedRelatedField
 
-    def build_dataclass_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:
-        """
-        Create fields for dataclasses.
-        """
-        field_class = HyperlinkedDataclassSerializer
-        field_kwargs = {'dataclass': type_info.base_type,
-                        'many': type_info.is_many}
-
-        return field_class, field_kwargs
+    @property
+    def serializer_dataclass_field(self):
+        return HyperlinkedDataclassSerializer
