@@ -167,14 +167,22 @@ class PartialPersonTest(TestCase):
             name='Alice',
             email='alice@example.com',
             phone=['+31-6-1234-5678', '+31-20-123-4567'],
+            favorite_pet=Pet('cat', 'Luna'),
+            pets=[Pet('dog', 'Bella'), Pet('cat', 'Luna')],
         )
 
         partial_representation = {
             'full_name': 'Bob',
-            'favorite_pet': {'animal': 'cat', 'name': 'Luna'}
+            'email': 'bob@example.com',
+            'favorite_pet': {'name': 'Molly'},
+            'pets': [{'animal': 'cat', 'name': 'Molly'}],
         }
 
-        expected_output = dataclasses.replace(input_instance, name='Bob', favorite_pet=Pet(animal='cat', name='Luna'))
+        expected_output = dataclasses.replace(input_instance,
+                                              name='Bob',
+                                              email='bob@example.com',
+                                              favorite_pet=Pet(animal='cat', name='Molly'),
+                                              pets=[Pet('cat', 'Molly')])
 
         serializer = PersonSerializer(instance=input_instance, data=partial_representation, partial=True)
         serializer.is_valid(raise_exception=True)

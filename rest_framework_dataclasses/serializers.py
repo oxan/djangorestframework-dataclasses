@@ -108,32 +108,29 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
     # Default `create` and `update` behavior...
 
-    def _strip_empty_sentinels(self, x: AnyT) -> AnyT:
-        """
-        Recursively strip the `empty` sentinel values from dataclasses, replacing them with their fields default value.
-        """
-        if dataclasses.is_dataclass(x) and not isinstance(x, type):
-            values = {field.name: self._strip_empty_sentinels(getattr(x, field.name)) for field in dataclasses.fields(x)
-                      if getattr(x, field.name) is not empty}
-            return type(x)(**values)
-        if isinstance(x, list):
-            return [self._strip_empty_sentinels(item) for item in x]
-        if isinstance(x, dict):
-            return {key: self._strip_empty_sentinels(value) for key, value in x.items()}
-        return x
+    def _strip_empty_sentinels(self, data: AnyT, instance: AnyT = None) -> AnyT:
+        if dataclasses.is_dataclass(data) and not isinstance(data, type):
+            values = {field.name: self._strip_empty_sentinels(getattr(data, field.name),
+                                                              getattr(instance, field.name, None))
+                      for field in dataclasses.fields(data)
+                      if getattr(data, field.name) is not empty}
+            if instance:
+                for field, value in values.items():
+                    setattr(instance, field, value)
+                return instance
+            else:
+                return type(data)(**values)
+        elif isinstance(data, list):
+            return [self._strip_empty_sentinels(item) for item in data]
+        elif isinstance(data, dict):
+            return {key: self._strip_empty_sentinels(value) for key, value in data.items()}
+        return data
 
     def create(self, validated_data: T) -> T:
-        # Create a new instance with all the `empty` sentinel values replaced by their defaults.
         return self._strip_empty_sentinels(validated_data)
 
     def update(self, instance: T, validated_data: T) -> T:
-        for name in self.dataclass_definition.fields.keys():
-            # Only update fields that have been set in the serialized representation.
-            value = getattr(validated_data, name)
-            if value is not empty:
-                setattr(instance, name, self._strip_empty_sentinels(value))
-
-        return instance
+        return self._strip_empty_sentinels(validated_data, instance)
 
     def save(self, **kwargs) -> T:
         assert hasattr(self, '_errors'), (
