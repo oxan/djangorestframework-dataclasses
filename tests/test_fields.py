@@ -102,6 +102,16 @@ class FieldsTest(unittest.TestCase):
         self.check_field(typing.Optional[refclass], DataclassSerializer,
                          {'dataclass': refclass, 'many': False, 'required': False, 'allow_null': True})
 
+        # customizing the dataclass serializer by changing the serializer_dataclass_field property
+        subclassed_serializer = type('SubclassedDataclassSerializer1', (DataclassSerializer, ), {})
+        setattr(DataclassSerializer, 'serializer_dataclass_field', subclassed_serializer)
+        self.check_field(refclass, subclassed_serializer, {'dataclass': refclass, 'many': False})
+
+        # customizing the dataclass serializer by putting the type into the field mapping
+        subclassed_serializer = type('SubclassedDataclassSerializer2', (DataclassSerializer, ), {})
+        DataclassSerializer.serializer_field_mapping[refclass] = subclassed_serializer
+        self.check_field(refclass, subclassed_serializer, {'dataclass': refclass, 'many': False})
+
     def test_relational(self):
         django.setup()
 

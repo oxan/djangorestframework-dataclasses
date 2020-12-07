@@ -439,7 +439,11 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         """
         Create fields for dataclasses.
         """
-        field_class = self.serializer_dataclass_field
+        try:
+            field_class = field_utils.lookup_type_in_mapping(self.serializer_field_mapping, type_info.base_type)
+        except KeyError:
+            field_class = self.serializer_dataclass_field
+
         field_kwargs = {'dataclass': type_info.base_type,
                         'many': type_info.is_many}
 
