@@ -1,6 +1,7 @@
 import dataclasses
 import datetime
 import decimal
+import enum
 import re
 import sys
 import typing
@@ -12,7 +13,7 @@ import django
 from django.db import models
 from rest_framework import fields, relations
 
-from rest_framework_dataclasses import field_utils
+from rest_framework_dataclasses import field_utils, fields as custom_fields
 from rest_framework_dataclasses.serializers import DataclassSerializer
 from rest_framework_dataclasses.types import Final, Literal
 
@@ -137,6 +138,14 @@ class FieldsTest(unittest.TestCase):
                          {'choices': ['a', 'b'], 'allow_blank': False, 'required': False, 'allow_null': True})
         self.check_field(Literal['a', 'b', '', None], fields.ChoiceField,
                          {'choices': ['a', 'b'], 'allow_blank': True, 'required': False, 'allow_null': True})
+
+    def test_enum(self):
+        class Color(enum.Enum):
+            RED = enum.auto()
+            GREEN = enum.auto()
+            BLUE = enum.auto()
+
+        self.check_field(Color, custom_fields.EnumField, {'enum_class': Color})
 
     def test_standard_primitives(self):
         self.check_field(int, fields.IntegerField)
