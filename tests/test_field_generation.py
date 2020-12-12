@@ -29,7 +29,7 @@ class FieldsTest(unittest.TestCase):
 
     def check_field(self, type_hint, field, kwargs=None):
         field_class, field_kwargs = self.build_typed_field(type_hint)
-        self.assertTrue(issubclass(field_class, field), f'for field of type {type_hint}')
+        self.assertTrue(field_class == field, f'for field of type {type_hint}')
 
         if kwargs is not None:
             self.assertDictEqual(field_kwargs, kwargs, f'arguments for field of type {type_hint}')
@@ -178,7 +178,7 @@ class FieldsTest(unittest.TestCase):
             self.build_typed_field(var_any)
 
     def test_standard_decimal(self):
-        self.check_field(decimal.Decimal, fields.DecimalField)
+        self.check_field(decimal.Decimal, custom_fields.DefaultDecimalField)
 
     def test_standard_dates(self):
         self.check_field(datetime.date, fields.DateField)
