@@ -2,6 +2,7 @@ import copy
 import dataclasses
 import datetime
 import decimal
+import enum
 import typing
 import uuid
 
@@ -11,6 +12,12 @@ from rest_framework import fields
 
 from rest_framework_dataclasses.serializers import DataclassSerializer
 from rest_framework_dataclasses.types import Literal
+
+
+class Gender(enum.Enum):
+    MALE = 'male'
+    FEMALE = 'female'
+    OTHER = 'other'
 
 
 @dataclasses.dataclass
@@ -26,6 +33,7 @@ class Person:
     name: str
     email: str
     phone: typing.List[str]
+    gender: typing.Optional[Gender] = None
     length: typing.Optional[decimal.Decimal] = None
     pets: typing.Optional[typing.List[Pet]] = None
     birth_date: typing.Optional[datetime.date] = None
@@ -52,8 +60,8 @@ class PersonSerializer(DataclassSerializer):
 
     class Meta:
         dataclass = Person
-        fields = ('id', 'full_name', 'email', 'phone', 'length', 'pets', 'birth_date', 'favorite_pet', 'movie_ratings',
-                  'slug', 'age')
+        fields = ('id', 'full_name', 'email', 'phone', 'gender', 'length', 'pets', 'birth_date', 'favorite_pet',
+                  'movie_ratings', 'slug', 'age')
         extra_kwargs = {
             'id': {'format': 'hex'},
             'phone': {'child_kwargs': {'max_length': 15}},
@@ -109,6 +117,7 @@ class PersonTest(TestCase, FunctionalTestMixin):
         email='alice@example.com',
         length=decimal.Decimal('1.68'),
         phone=['+31-6-1234-5678', '+31-20-123-4567'],
+        gender=Gender.FEMALE,
         pets=[Pet(animal='cat', name='Milo', weight=decimal.Decimal('10.8')),
               Pet(animal='dog', name='Max', weight=decimal.Decimal('123.4'))],
         birth_date=datetime.date(1980, 4, 1),
@@ -121,6 +130,7 @@ class PersonTest(TestCase, FunctionalTestMixin):
         'email': 'alice@example.com',
         'length': '1.68',
         'phone': ['+31-6-1234-5678', '+31-20-123-4567'],
+        'gender': 'female',
         'pets': [
             {'animal': 'cat', 'name': 'Milo', 'weight': '10.8'},
             {'animal': 'dog', 'name': 'Max', 'weight': '123.4'}
@@ -153,6 +163,7 @@ class EmptyPersonTest(TestCase, FunctionalTestMixin):
     representation_readonly = {
         'slug': 'Alice',
         'length': None,
+        'gender': None,
         'pets': None,
         'birth_date': None,
         'age': None,

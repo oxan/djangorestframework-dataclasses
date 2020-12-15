@@ -4,6 +4,7 @@ import datetime
 import decimal
 import uuid
 from collections import OrderedDict
+from enum import Enum
 from typing import Any, Dict, Generic, Iterable, Mapping, Tuple, Type, TypeVar
 
 import rest_framework.fields
@@ -343,6 +344,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             field_class, field_kwargs = self.build_dataclass_field(field_name, type_info)
         elif isinstance(type_info.base_type, type) and issubclass(type_info.base_type, Model):
             field_class, field_kwargs = self.build_relational_field(field_name, type_info)
+        elif isinstance(type_info.base_type, type) and issubclass(type_info.base_type, Enum):
+            field_class, field_kwargs = self.build_enum_field(field_name, type_info)
         elif typing_utils.is_literal_type(type_info.base_type):
             field_class, field_kwargs = self.build_literal_field(field_name, type_info)
         else:
@@ -419,6 +422,16 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         if not issubclass(field_class, HyperlinkedRelatedField):
             field_kwargs.pop('view_name', None)
 
+        return field_class, field_kwargs
+
+    def build_enum_field(self, field_name: str, type_info: TypeInfo):
+        """
+        Create EnumField from a Enum type.
+        """
+        field_class = fields.EnumField
+        field_kwargs = {
+            'enum_class': type_info.base_type
+        }
         return field_class, field_kwargs
 
     # noinspection PyUnusedLocal

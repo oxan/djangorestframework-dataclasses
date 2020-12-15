@@ -267,6 +267,31 @@ If you prefer to use hyperlinks to represent relationships rather than primary k
 the ``HyperlinkedDataclassSerializer`` class: it generates a ``HyperlinkedRelatedField`` instead of a
 ``PrimaryKeyRelatedField``.
 
+New serializer field types
+--------------------------
+To handle some types for which DRF does not ship a serializer field, some new serializer field types are shipped in the
+``rest_framework_dataclasses.fields`` namespace. These fields can be used independently of the ``DataclassSerializer``
+as well.
+
+DefaultDecimalField
+~~~~~~~~~~~~~~~~~~~
+A subclass of `DecimalField`_ that defaults ``max_digits`` to ``None`` and ``decimal_places`` to 2. Used to represent
+decimal values which there is no explicit field configured.
+
+EnumField
+~~~~~~~~~
+A subclass of `ChoiceField`_ to represent Python `enumerations`_. The enumeration members can be represented by either
+their name or value. The member name is used as display name.
+
+**Signature**: ``EnumField(enum_class, by_name=False)``
+
+* ``enum_class``: The enumeration class.
+* ``by_name``: Whether members are represented by their value (``False``) or name (``True``).
+
+.. _`enumerations`: https://docs.python.org/3/library/enum.html
+.. _`ChoiceField`: https://www.django-rest-framework.org/api-guide/fields/#choicefield
+.. _`DecimalField`: https://www.django-rest-framework.org/api-guide/fields/#decimalfield
+
 Advanced usage
 --------------
 
@@ -317,6 +342,7 @@ So far, field generation is supported for the following types and their subclass
 * ``date``, ``datetime``, ``time`` and ``timedelta`` from the ``datetime`` package.
 * ``decimal.Decimal`` (``max_digits`` and ``decimal_places`` default to ``None`` and ``2`` respectively).
 * ``uuid.UUID``
+* ``enum.Enum`` (mapped to a ``EnumField``)
 * ``typing.Iterable`` (including ``typing.List`` and `PEP 585`_-style generics such as ``list[int]``).
 * ``typing.Mapping`` (including ``typing.Dict`` and `PEP 585`_-style generics such as ``dict[str, int]``).
 * ``typing.Literal`` (mapped to a ``ChoiceField``).
@@ -346,9 +372,10 @@ serializer fields are generated:
 * The ``build_property_field()`` method is called to create serializer fields for methods. By default this creates a
   read-only field with the method return value.
 
-* The ``build_standard_field()``, ``build_relational_field()``, ``build_dataclass_field()``, ``build_literal_field()``
-  and ``build_composite_field()`` methods are used to process respectively fields, nested models, nested dataclasses,
-  literals, and lists or dictionaries. These can be overridden to change the field generation logic.
+* The ``build_standard_field()``, ``build_relational_field()``, ``build_dataclass_field()``, ``build_enum_field()``,
+  ``build_literal_field()`` and ``build_composite_field()`` methods are used to process respectively fields, nested
+  models, nested dataclasses, enums, literals, and lists or dictionaries. These can be overridden to change the field
+  generation logic.
 
 Note that until version 1.0 these API's are not declared stable yet and might change if necessary.
 
