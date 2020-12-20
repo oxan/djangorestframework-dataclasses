@@ -313,7 +313,7 @@ Advanced usage
     @dataclass
     class Company:
         name: str
-        location: str
+        location: Optional[str] = None
 
     @dataclass
     class Person:
@@ -332,6 +332,25 @@ Advanced usage
     Person(name='Alice',
            current_employer=Company('Acme Corp.', 'Los Angeles'),
            past_employers=[Company(name='OsCorp', location='NYC')])
+
+* If you override the `create()` or `update()` methods, the dataclass instance passed in the `validated_data` argument
+  will have the special `rest_framework.fields.empty` value for any fields for which no data was provided. This is
+  required to distinguish between not-provided fields and fields with the default value, as needed for partial updates.
+  You can get rid of these `empty` markers and replace them with the default value by calling the parent `update()` or
+  `create()` methods - this is the only thing they do.
+
+  .. code:: Python
+
+    class CompanySerializer(DataclassSerializer):
+        def create(self, validated_data):
+            instance = super(CompanySerializer, self).create(validated_data)
+            # if no value is provided for location, these will both hold
+            assert validated_data.location == rest_framework.fields.empty
+            assert instance.location is None  # None is the default value of Company.location (see previous example)
+
+  The `validated_data` property on the serializer has these `empty` markers stripped as well, and replaced with the
+  default values for not-provided fields. Note that this means you cannot access `validated_data` on the serializer for
+  partial updates where no data has been provided for fields without a default value, an Exception will be thrown.
 
 Field mappings
 --------------
