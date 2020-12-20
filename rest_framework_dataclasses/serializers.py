@@ -180,6 +180,11 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         # the serializer instance.
         declared_fields = copy.deepcopy(self._declared_fields)
 
+        # Copy fields declared in metadata, for the same reason.
+        metadata_fields = {field.name: copy.deepcopy(field.metadata['drf_field'])
+                           for field in self.dataclass_definition.fields.values()
+                           if 'drf_field' in field.metadata}
+
         # Determine all fields that should be included on the serializer.
         field_names = self.get_field_names()
 
@@ -190,15 +195,16 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         fields = OrderedDict()
 
         for field_name in field_names:
-            # If the field is explicitly declared on the class then use that.
-            if field_name in declared_fields:
+            # If the field is explicitly declared, either on the serializer or in the field metadata, then use that.
+            if field_name in declared_fields or field_name in metadata_fields:
                 assert field_name not in extra_kwargs, (
                     "Cannot both declare the field '{field_name}' and include it in '{serializer_class}' "
                     "`extra_kwargs` or `read_only_fields` option. Move all options to the field declaration."
                     .format(field_name=field_name, serializer_class=self.__class__.__name__)
                 )
 
-                fields[field_name] = declared_fields[field_name]
+                # Prefer the field declared on the serializer above the one declared in field metadata.
+                fields[field_name] = declared_fields.get(field_name, metadata_fields.get(field_name, None))
                 continue
 
             extra_field_kwargs = extra_kwargs.get(field_name, {})
@@ -318,10 +324,14 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
         # Determine the serializer field class and keyword arguments.
         if source in self.dataclass_definition.fields:
-            default_value = self.dataclass_definition.fields[source].default
-            default_type = type(default_value) if default_value is not None else None
+            field = self.dataclass_definition.fields[source]
+            default_type = type(field.default) if field.default is not None else None
             type_info = field_utils.get_type_info(self.dataclass_definition.field_types[source], default_type)
             field_class, field_kwargs = self.build_typed_field(source, type_info, extra_kwargs)
+
+            # Include extra kwargs defined in the field metadata
+            if 'drf_field_args' in field.metadata:
+                field_kwargs = self.include_extra_kwargs(field_kwargs, field.metadata['drf_field_args'])
         elif hasattr(self.dataclass_definition.dataclass_type, source):
             field_class, field_kwargs = self.build_property_field(source)
         else:
