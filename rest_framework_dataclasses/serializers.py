@@ -4,17 +4,19 @@ import datetime
 import decimal
 import uuid
 from collections import OrderedDict
-from typing import Any, Dict, Generic, Mapping, List, Tuple, Type, TypeVar
+from enum import Enum
+from typing import Any, Dict, Generic, Iterable, Mapping, Tuple, Type, TypeVar
 
 import rest_framework.fields
 import rest_framework.serializers
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model
 from django.utils.functional import cached_property
+from rest_framework.fields import empty
 from rest_framework.relations import HyperlinkedRelatedField, PrimaryKeyRelatedField
 from rest_framework.utils.field_mapping import get_relation_kwargs
 
-from rest_framework_dataclasses import field_utils, typing_utils
+from rest_framework_dataclasses import fields, field_utils, typing_utils
 from rest_framework_dataclasses.field_utils import get_dataclass_definition, DataclassDefinition, TypeInfo
 from rest_framework_dataclasses.types import Dataclass
 
@@ -24,6 +26,7 @@ KWArgs = Dict[str, Any]
 SerializerField = rest_framework.fields.Field
 SerializerFieldDefinition = Tuple[Type[SerializerField], KWArgs]
 T = TypeVar('T', bound=Dataclass)
+AnyT = TypeVar('AnyT')
 
 
 # noinspection PyMethodMayBeStatic
@@ -40,8 +43,6 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
     If the `DataclassSerializer` class *doesn't* generate the set of fields that you need you should either declare the
     extra/differing fields explicitly on the serializer class, or simply use a `Serializer` class.
-
-    Note that this implementation is heavily based on that of ModelSerializer in the rest_framework source code.
     """
 
     # The mapping of field types to serializer fields
@@ -50,18 +51,25 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         float:              rest_framework.fields.FloatField,
         bool:               rest_framework.fields.BooleanField,
         str:                rest_framework.fields.CharField,
-        decimal.Decimal:    rest_framework.fields.DecimalField,
+        decimal.Decimal:    fields.DefaultDecimalField,
         datetime.date:      rest_framework.fields.DateField,
         datetime.datetime:  rest_framework.fields.DateTimeField,
         datetime.time:      rest_framework.fields.TimeField,
         datetime.timedelta: rest_framework.fields.DurationField,
         uuid.UUID:          rest_framework.fields.UUIDField,
-        # Note that these are only used for class typehints, typing.Dict and typing.List are handled by
-        # build_composite_field().
         dict:               rest_framework.fields.DictField,
         list:               rest_framework.fields.ListField
     }
     serializer_related_field = PrimaryKeyRelatedField
+
+    # Unfortunately this cannot be an actual field as Python processes the class before it defines the class, but this
+    # comes close enough.
+    @property
+    def serializer_dataclass_field(self):
+        return DataclassSerializer
+
+    # Type hints
+    _declared_fields: Mapping[str, SerializerField]
 
     # Override constructor to allow "anonymous" usage by passing the dataclass type and extra kwargs as a constructor
     # parameter instead of via a Meta class.
@@ -87,12 +95,14 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
                 "Class '{serializer_class}' missing `Meta` attribute."
                 .format(serializer_class=self.__class__.__name__)
             )
-            assert hasattr(self.Meta, 'dataclass'), (
+
+            meta = getattr(self, 'Meta')
+            assert hasattr(meta, 'dataclass'), (
                 "Class '{serializer_class}' missing `Meta.dataclass` attribute."
                 .format(serializer_class=self.__class__.__name__)
             )
 
-            dataclass_type = self.Meta.dataclass
+            dataclass_type = meta.dataclass
 
         # Make sure we're dealing with an actual dataclass.
         if not dataclasses.is_dataclass(dataclass_type):
@@ -105,17 +115,29 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
     # Default `create` and `update` behavior...
 
+    def _strip_empty_sentinels(self, data: AnyT, instance: AnyT = None) -> AnyT:
+        if dataclasses.is_dataclass(data) and not isinstance(data, type):
+            values = {field.name: self._strip_empty_sentinels(getattr(data, field.name),
+                                                              getattr(instance, field.name, None))
+                      for field in dataclasses.fields(data)
+                      if getattr(data, field.name) is not empty}
+            if instance:
+                for field, value in values.items():
+                    setattr(instance, field, value)
+                return instance
+            else:
+                return type(data)(**values)
+        elif isinstance(data, list):
+            return [self._strip_empty_sentinels(item) for item in data]
+        elif isinstance(data, dict):
+            return {key: self._strip_empty_sentinels(value) for key, value in data.items()}
+        return data
+
     def create(self, validated_data: T) -> T:
-        return validated_data
+        return self._strip_empty_sentinels(validated_data)
 
     def update(self, instance: T, validated_data: T) -> T:
-        for name, field in self.dataclass_definition.fields.items():
-            # Don't overwrite fields that weren't present in the serialized representation.
-            # noinspection PyProtectedMember
-            if name not in validated_data._unsupplied_fields:
-                setattr(instance, name, getattr(validated_data, name))
-
-        return instance
+        return self._strip_empty_sentinels(validated_data, instance)
 
     def save(self, **kwargs) -> T:
         assert hasattr(self, '_errors'), (
@@ -132,16 +154,13 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             "inspect 'serializer.validated_data' instead. "
         )
 
-        validated_data = dataclasses.replace(self.validated_data, **kwargs)
+        # Explicitly use internal validated_data here, as we want the empty sentinel values instead of the normalized
+        # external representation.
+        validated_data = dataclasses.replace(self._validated_data, **kwargs)
 
         if self.instance is not None:
-            # Remove fields supplied by kwargs from the list of unsupplied fields that shouldn't be overwritten.
-            # noinspection PyProtectedMember
-            validated_data._unsupplied_fields = [f for f in self.validated_data._unsupplied_fields if f not in kwargs]
-
             self.instance = self.update(self.instance, validated_data)
         else:
-            # We don't need to bother with unsupplied fields here, as there's nothing to overwrite anyway.
             self.instance = self.create(validated_data)
 
         assert self.instance is not None, (
@@ -157,6 +176,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         Return the dict of field names -> field instances that should be used for `self.fields` when instantiating the
         serializer.
         """
+        # Copy declared fields, so that the field on the serializer class remains unchanged when the fields are bound to
+        # the serializer instance.
         declared_fields = copy.deepcopy(self._declared_fields)
 
         # Determine all fields that should be included on the serializer.
@@ -187,14 +208,14 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
     # Methods for determining the set of field names to include...
 
-    def get_field_names(self) -> List[str]:
+    def get_field_names(self) -> Iterable[str]:
         """
         Returns the list of all field names that should be created when instantiating this serializer class. This is
         based on the default set of fields, but also takes into account the `Meta.fields` or `Meta.exclude` options
         if they have been specified.
         """
-        # Retrieve metadata about the declared fields.
-        declared_fields = self._declared_fields
+        # Retrieve names of the declared fields.
+        declared_field_names = self._declared_fields.keys()
 
         # Read configuration from Meta class.
         meta = getattr(self, 'Meta', None)
@@ -228,7 +249,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             assert (
                 field_name == rest_framework.serializers.ALL_FIELDS or                         # all fields magic option
                 field_name in self.dataclass_definition.fields or                              # dataclass fields
-                field_name in declared_fields or                                               # declared fields
+                field_name in declared_field_names or                                          # declared fields
                 callable(getattr(self.dataclass_definition.dataclass_type, field_name, None))  # methods
             ), (
                 "The field '{field_name}' was included on serializer {serializer_class} in the `fields` option, "
@@ -240,7 +261,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             # If there are only explicitly specified fields, ensure that all declared fields are included. Do not
             # require any fields that are declared in a parent class, in order to allow serializer subclasses to only
             # include a subset of fields.
-            required_field_names = set(declared_fields)
+            required_field_names = set(declared_field_names)
             for cls in self.__class__.__bases__:
                 required_field_names -= set(getattr(cls, '_declared_fields', []))
 
@@ -255,12 +276,12 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         # The field list now includes the magic all fields option, so replace it with the default field names.
         fields = list(fields)
         fields.remove(rest_framework.serializers.ALL_FIELDS)
-        fields.extend(self.get_default_field_names(declared_fields))
+        fields.extend(self.get_default_field_names(declared_field_names))
 
         if exclude is not None:
             # If `Meta.exclude` is included, then remove those fields.
             for field_name in exclude:
-                assert field_name not in declared_fields, (
+                assert field_name not in declared_field_names, (
                     "Cannot both declare the field '{field_name}' and include it in '{serializer_class}' `exclude` "
                     "option. Remove the field or, if inherited from a parent serializer, disable with "
                     "`{field_name} = None`."
@@ -277,7 +298,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
         return fields
 
-    def get_default_field_names(self, declared_fields: Mapping[str, SerializerField]) -> List[str]:
+    def get_default_field_names(self, declared_fields: Iterable[str]) -> Iterable[str]:
         """
         Return the default list of field names that will be used if the `Meta.fields` option is not specified.
         """
@@ -297,7 +318,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
         # Determine the serializer field class and keyword arguments.
         if source in self.dataclass_definition.fields:
-            type_info = field_utils.get_type_info(self.dataclass_definition.field_types[source])
+            default_value = self.dataclass_definition.fields[source].default
+            default_type = type(default_value) if default_value is not None else None
+            type_info = field_utils.get_type_info(self.dataclass_definition.field_types[source], default_type)
             field_class, field_kwargs = self.build_typed_field(source, type_info, extra_kwargs)
         elif hasattr(self.dataclass_definition.dataclass_type, source):
             field_class, field_kwargs = self.build_property_field(source)
@@ -318,9 +341,11 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         if type_info.is_mapping or type_info.is_many:
             field_class, field_kwargs = self.build_composite_field(field_name, type_info, extra_kwargs)
         elif dataclasses.is_dataclass(type_info.base_type):
-            field_class, field_kwargs = self.build_nested_field(field_name, type_info)
+            field_class, field_kwargs = self.build_dataclass_field(field_name, type_info)
         elif isinstance(type_info.base_type, type) and issubclass(type_info.base_type, Model):
             field_class, field_kwargs = self.build_relational_field(field_name, type_info)
+        elif isinstance(type_info.base_type, type) and issubclass(type_info.base_type, Enum):
+            field_class, field_kwargs = self.build_enum_field(field_name, type_info)
         elif typing_utils.is_literal_type(type_info.base_type):
             field_class, field_kwargs = self.build_literal_field(field_name, type_info)
         else:
@@ -330,6 +355,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             field_kwargs['required'] = False
             field_kwargs['allow_null'] = True
 
+        if type_info.is_final:
+            field_kwargs['read_only'] = True
+
         return field_class, field_kwargs
 
     def build_composite_field(self, field_name: str, type_info: TypeInfo,
@@ -337,10 +365,11 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         """
         Create a composite (mapping or list) field.
         """
+        # Lookup the types from the field mapping, so that it can easily be changed without overriding the method.
         if type_info.is_mapping:
-            field_class = rest_framework.fields.DictField
+            field_class = self.serializer_field_mapping[dict]
         else:
-            field_class = rest_framework.fields.ListField
+            field_class = self.serializer_field_mapping[list]
 
         # If the base type is not specified or is any type, we don't have to bother creating the child field.
         if type_info.base_type is None:
@@ -376,15 +405,16 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             field_type = self.dataclass_definition.field_types[field_name]
             raise NotImplementedError(
                 "Automatic serializer field deduction not supported for field '{field}' on '{dataclass}' "
-                "of type '{type}'."
-                .format(dataclass=self.dataclass_definition.dataclass_type.__name__, field=field_name, type=field_type)
+                "of type '{type}' (during search for field of type '{reduced_type}')."
+                .format(dataclass=self.dataclass_definition.dataclass_type.__name__, field=field_name,
+                        type=field_type, reduced_type=type_info.base_type)
             )
 
     def build_relational_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:
         """
         Create fields for models.
         """
-        relation_info = field_utils.get_relation_info(self.dataclass_definition, type_info)
+        relation_info = field_utils.get_relation_info(type_info)
         field_class = self.serializer_related_field
         field_kwargs = get_relation_kwargs(field_name, relation_info)
 
@@ -394,6 +424,17 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
         return field_class, field_kwargs
 
+    def build_enum_field(self, field_name: str, type_info: TypeInfo):
+        """
+        Create EnumField from a Enum type.
+        """
+        field_class = fields.EnumField
+        field_kwargs = {
+            'enum_class': type_info.base_type
+        }
+        return field_class, field_kwargs
+
+    # noinspection PyUnusedLocal
     def build_literal_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:
         """
         Create ChoiceField from a Literal[...] type.
@@ -407,16 +448,21 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
         return field_class, field_kwargs
 
-    def build_nested_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:
+    def build_dataclass_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:
         """
         Create fields for dataclasses.
         """
-        field_class = DataclassSerializer
+        try:
+            field_class = field_utils.lookup_type_in_mapping(self.serializer_field_mapping, type_info.base_type)
+        except KeyError:
+            field_class = self.serializer_dataclass_field
+
         field_kwargs = {'dataclass': type_info.base_type,
                         'many': type_info.is_many}
 
         return field_class, field_kwargs
 
+    # noinspection PyUnusedLocal
     def build_property_field(self, field_name: str) -> SerializerFieldDefinition:
         """
         Create a read only field for dataclass methods and properties.
@@ -482,14 +528,13 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
                     "The `read_only_fields` option must be a list or tuple. Got '{type}'."
                     .format(type=type(read_only_fields).__name__)
                 )
+
             for field_name in read_only_fields:
                 kwargs = extra_kwargs.get(field_name, {})
                 kwargs['read_only'] = True
                 extra_kwargs[field_name] = kwargs
-
         else:
-            # Guard against the possible misspelling `readonly_fields` (used
-            # by the Django admin and others).
+            # Guard against the possible misspelling `readonly_fields` (used by the Django admin and others).
             assert not hasattr(meta, 'readonly_fields'), (
                 "Serializer '{serializer_class}' has field `readonly_fields`; the correct spelling for the option is "
                 "`read_only_fields`."
@@ -505,26 +550,22 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         Convert a dictionary representation of the dataclass containing only primitive values to a dataclass instance.
         """
         native_values = super(DataclassSerializer, self).to_internal_value(data)
-        dataclass_type = self.dataclass_definition.dataclass_type
-        instance = dataclass_type(**native_values)
+        empty_values = {key: empty for key in self.dataclass_definition.fields.keys() if key not in native_values}
 
-        # Keep a list of the fields that have not been supplied in the serialized representation, so that we can avoid
-        # overwriting existing values for them in update().
-        instance._unsupplied_fields = [f for f in self.dataclass_definition.fields.keys() if f not in native_values]
+        dataclass_type = self.dataclass_definition.dataclass_type
+        instance = dataclass_type(**native_values, **empty_values)
 
         return instance
+
+    @cached_property
+    def validated_data(self):
+        internal_validated_data = super(DataclassSerializer, self).validated_data
+        return self._strip_empty_sentinels(internal_validated_data)
 
 
 class HyperlinkedDataclassSerializer(DataclassSerializer):
     serializer_related_field = HyperlinkedRelatedField
 
-    def build_nested_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:
-        """
-        Create fields for dataclasses.
-        """
-        field_class = HyperlinkedDataclassSerializer
-        field_kwargs = {'dataclass': type_info.base_type,
-                        'many': type_info.is_many,
-                        'allow_null': type_info.is_optional}
-
-        return field_class, field_kwargs
+    @property
+    def serializer_dataclass_field(self):
+        return HyperlinkedDataclassSerializer

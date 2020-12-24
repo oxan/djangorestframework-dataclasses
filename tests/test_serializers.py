@@ -7,7 +7,10 @@ from unittest import TestCase
 
 from django.core.exceptions import ImproperlyConfigured
 from rest_framework import fields, serializers
-from rest_framework_dataclasses.serializers import DataclassSerializer
+from rest_framework.fields import empty
+
+from rest_framework_dataclasses import types
+from rest_framework_dataclasses.serializers import DataclassSerializer, HyperlinkedDataclassSerializer
 
 
 @dataclasses.dataclass
@@ -17,7 +20,13 @@ class Person:
     birth_date: typing.Optional[datetime.date] = None
 
     def age(self) -> int:
-        return 1
+        pass
+
+
+@dataclasses.dataclass
+class Group:
+    leader: Person
+    people: typing.List[Person]
 
 
 class SerializerTest(TestCase):
@@ -62,52 +71,75 @@ class SerializerTest(TestCase):
         with self.assertRaises(ValueError):
             definition = self.create_serializer(str).dataclass_definition
 
+    def test_strip_empty(self):
+        ser = self.create_serializer(Person)
+
+        # simple
+        in_data = Person(name='Alice', length=123, birth_date=empty)
+        out_data = Person(name='Alice', length=123, birth_date=None)
+        self.assertEqual(ser._strip_empty_sentinels(in_data), out_data)
+
+        # nested dataclasses
+        in_data = Group(leader=Person(name='Alice', length=123, birth_date=empty),
+                        people=[Person(name='Bob', length=456, birth_date=empty)])
+        out_data = Group(leader=Person(name='Alice', length=123),
+                         people=[Person(name='Bob', length=456)])
+        self.assertEqual(ser._strip_empty_sentinels(in_data), out_data)
+
     def test_save(self):
-        def mock_person_serializer(data, instance=None):
+        def mock_save(validated_data, instance=None, **kwargs):
             serializer = self.create_serializer(Person)
             serializer._errors = []
-            serializer._validated_data = data
-            if not hasattr(serializer._validated_data, '_unsupplied_fields'):
-                serializer._validated_data._unsupplied_fields = []
+            serializer._validated_data = validated_data
             if instance:
                 serializer.instance = instance
-            return serializer
-
-        alice = Person(name='Alice', length=123)
+            return serializer.save(**kwargs)
 
         # regular create
-        ser = mock_person_serializer(alice)
-        self.assertEqual(ser.save(), alice)
+        in_data = Person(name='Alice', length=123)
+        out_data = mock_save(in_data)
+        self.assertEqual(in_data, out_data)
 
         # regular update
-        inst = dataclasses.replace(alice)
-        ser = mock_person_serializer(alice, instance=inst)
-        self.assertIs(ser.save(), inst)
-        self.assertEqual(ser.save(), alice)
+        inst = Person(name='Alice', length=123)
+        in_data = dataclasses.replace(inst, length=456)
+        out_data = mock_save(in_data, instance=inst)
+        self.assertIs(out_data, inst)
+        self.assertEqual(out_data, in_data)
 
         # create with kwargs
-        ser = mock_person_serializer(alice)
-        self.assertEqual(ser.save(length=456), dataclasses.replace(alice, length=456))
+        in_data = Person(name='Alice', length=123)
+        out_data = mock_save(in_data, length=456)
+        self.assertEqual(out_data, dataclasses.replace(in_data, length=456))
 
         # update with kwargs
-        inst = dataclasses.replace(alice, name='Bob', length=789)
-        ser = mock_person_serializer(alice, instance=inst)
-        self.assertIs(ser.save(length=456), inst)
-        self.assertEqual(ser.save(length=456), dataclasses.replace(alice, length=456))
+        inst = Person(name='Bob', length=789)
+        in_data = Person(name='Alice', length=456)
+        out_data = mock_save(in_data, instance=inst, length=456)
+        self.assertIs(out_data, inst)
+        self.assertEqual(out_data, dataclasses.replace(in_data, length=456))
 
-        # full update with set of field to default value
-        inst = dataclasses.replace(alice, birth_date=datetime.datetime(2020, 2, 2))
-        ser = mock_person_serializer(alice, instance=inst)
-        self.assertIs(ser.save(), inst)
-        self.assertEqual(ser.save().birth_date, None)
+        # full update with explicit reset of field to default value
+        inst = Person(name='Alice', length=123, birth_date=datetime.datetime(2020, 2, 2))
+        in_data = Person(name='Alice', length=123, birth_date=None)
+        out_data = mock_save(in_data, instance=inst)
+        self.assertIs(out_data, inst)
+        self.assertEqual(out_data.birth_date, None)
 
-        # partial update with missing optional field
-        data = dataclasses.replace(alice)
-        data._unsupplied_fields = ["birth_date"]
-        inst = dataclasses.replace(alice, birth_date=datetime.datetime(2020, 2, 2))
-        ser = mock_person_serializer(data, instance=inst)
-        self.assertIs(ser.save(), inst)
-        self.assertEqual(ser.save().birth_date, datetime.datetime(2020, 2, 2))
+        # full update with unsupplied optional field
+        inst = Person(name='Alice', length=123, birth_date=datetime.datetime(2020, 2, 2))
+        in_data = Person(name='Alice', length=123, birth_date=empty)
+        out_data = mock_save(in_data, instance=inst)
+        self.assertIs(out_data, inst)
+        self.assertEqual(out_data.birth_date, datetime.datetime(2020, 2, 2))
+
+        # partial update with missing required field
+        inst = Person(name='Alice', length=123)
+        in_data = Person(name='Bob', length=empty)
+        out_data = mock_save(in_data, instance=inst)
+        self.assertIs(out_data, inst)
+        self.assertEqual(out_data.name, 'Bob')
+        self.assertEqual(out_data.length, 123)
 
         # not validated
         with self.assertRaises(AssertionError):
@@ -281,6 +313,14 @@ class SerializerTest(TestCase):
         with self.assertRaises(ImproperlyConfigured):
             unknown_field = serializer.create_field('aliased', {'source': 'nonexisting'})
 
+        # Final field with a default value
+        dc = dataclasses.make_dataclass('Person', [('species', types.Final, dataclasses.field(default='Human'))])
+        serializer = self.create_serializer(dc)
+
+        species_field = serializer.create_field('species', {})
+        self.assertIsInstance(species_field, fields.CharField)
+        self.assertTrue(species_field.read_only)
+
     def test_include_extra_kwargs(self):
         serializer = self.create_serializer()
 
@@ -314,21 +354,39 @@ class SerializerTest(TestCase):
         with self.assertRaises(AssertionError):
             self.create_serializer(meta={'readonly_fields': ['name']}).get_extra_kwargs()
 
-    def test_to_internal_representation(self):
+    def test_to_internal_value(self):
         ser = self.create_serializer(Person)
 
         # simple
         value = ser.to_internal_value({'name': 'Alice', 'length': 123, 'birth_date': '2020-02-02'})
         self.assertEqual(value, Person(name='Alice', length=123, birth_date=datetime.date(2020, 2, 2)))
-        self.assertEqual(value._unsupplied_fields, [])
 
         # unsupplied fields
         value = ser.to_internal_value({'name': 'Alice', 'length': 123})
-        self.assertEqual(value, Person(name='Alice', length=123))
-        self.assertEqual(value._unsupplied_fields, ["birth_date"])
+        self.assertEqual(value, Person(name='Alice', length=123, birth_date=empty))
+
+        # unsupplied required fields (in partial mode)
+        ser = self.create_serializer(Person, arguments={'partial': True})
+        value = ser.to_internal_value({'name': 'Alice'})
+        self.assertEqual(value, Person(name='Alice', length=empty, birth_date=empty))
 
         # nested
         simple = dataclasses.make_dataclass('child', [('value', str)])
         parent = dataclasses.make_dataclass('parent', [('container', simple)])
-        self.assertEqual(self.create_serializer(parent).to_internal_value({'container': {'value': 'a'}}),
-                         parent(container=simple(value='a')))
+        value = self.create_serializer(parent).to_internal_value({'container': {'value': 'a'}})
+        self.assertEqual(value, parent(container=simple(value='a')))
+
+    def test_validated_data(self):
+        data = {'name': 'Alice', 'length': 123}
+        ser = self.create_serializer(Person, arguments={'data': data})
+        ser.is_valid(raise_exception=True)
+
+        self.assertEqual(ser.validated_data, Person(name='Alice', length=123, birth_date=None))
+
+    def test_hyperlinked(self):
+        # test if it nests itself, as opposed to the "default" DataclassSerializer
+        ser = HyperlinkedDataclassSerializer(dataclass=Group)
+        f = ser.get_fields()
+
+        self.assertIsInstance(f['leader'], HyperlinkedDataclassSerializer)
+        self.assertIsInstance(f['people'].child, HyperlinkedDataclassSerializer)

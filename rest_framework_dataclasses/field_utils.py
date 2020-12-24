@@ -20,6 +20,7 @@ class DataclassDefinition:
 class TypeInfo:
     is_many: bool
     is_mapping: bool
+    is_final: bool
     is_optional: bool
     base_type: type
 
@@ -40,10 +41,16 @@ def get_dataclass_definition(dataclass_type: type) -> DataclassDefinition:
     return DataclassDefinition(dataclass_type, fields, types)
 
 
-def get_type_info(tp: type) -> TypeInfo:
+def get_type_info(tp: type, default_value_type: typing.Optional[type] = None) -> TypeInfo:
     """
     Reduce iterable and optional types to their 'base' types.
     """
+    is_final = typing_utils.is_final_type(tp)
+    if is_final:
+        tp = typing_utils.get_final_type(tp)
+        if tp is typing.Any and default_value_type is not None:
+            tp = default_value_type
+
     is_optional = typing_utils.is_optional_type(tp)
     if is_optional:
         tp = typing_utils.get_optional_type(tp)
@@ -62,17 +69,22 @@ def get_type_info(tp: type) -> TypeInfo:
     if tp is typing.Any:
         tp = None
 
-    return TypeInfo(is_many, is_mapping, is_optional, tp)
+    return TypeInfo(is_many, is_mapping, is_final, is_optional, tp)
 
 
-def get_relation_info(definition: DataclassDefinition, type_info: TypeInfo) -> RelationInfo:
-    # TODO needs checks first
+def get_relation_info(type_info: TypeInfo) -> RelationInfo:
+    """
+    Given a type_info that references a Model, extract the RelationInfo.
+    """
     return RelationInfo(
+        # there's no foreign key field
         model_field=None,
         related_model=type_info.base_type,
         to_many=type_info.is_many,
+        # as there's no foreign key, it also cannot reference a field on the referenced model
         to_field=None,
         has_through_model=False,
+        # we're never the model
         reverse=False
     )
 

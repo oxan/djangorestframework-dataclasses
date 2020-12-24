@@ -79,6 +79,17 @@ class TypingTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             typing_utils.get_optional_type(str)
 
+    def test_final(self):
+        self.assertTrue(typing_utils.is_final_type(types.Final[int]))
+        self.assertTrue(typing_utils.is_final_type(types.Final))
+        self.assertFalse(typing_utils.is_final_type(int))
+
+        self.assertEqual(typing_utils.get_final_type(types.Final[int]), int)
+        self.assertAnyTypeEquivalent(typing_utils.get_final_type(types.Final))
+
+        with self.assertRaises(ValueError):
+            typing_utils.get_final_type(str)
+
     def test_literal(self):
         self.assertTrue(typing_utils.is_literal_type(types.Literal['a', 'b']))
         self.assertTrue(typing_utils.is_literal_type(types.Literal['a', 'b', None]))
@@ -105,18 +116,21 @@ class TypingTest(unittest.TestCase):
         self.assertListEqual(typing_utils.get_literal_choices(types.Literal['a', 'b', types.Literal[1, 2, None]]),
                              ['a', 'b', 1, 2, None])
 
+        with self.assertRaises(ValueError):
+            typing_utils.get_literal_choices(str)
+
     # noinspection PyPep8Naming
     def test_variable_type(self):
         T = typing.TypeVar('T')
         U = typing.TypeVar('U', int, str)
+        V = typing.TypeVar('V', bound=Exception)
 
         self.assertTrue(typing_utils.is_type_variable(T))
         self.assertTrue(typing_utils.is_type_variable(U))
+        self.assertTrue(typing_utils.is_type_variable(V))
         self.assertFalse(typing_utils.is_type_variable(int))
         self.assertFalse(typing_utils.is_type_variable(typing.List))
 
-        self.assertIsNone(typing_utils.get_variable_types(T))
-        self.assertListEqual(typing_utils.get_variable_types(U), [int, str])
-
         self.assertEqual(typing_utils.get_variable_type_substitute(T), typing.Any)
         self.assertEqual(typing_utils.get_variable_type_substitute(U), typing.Union[int, str])
+        self.assertEqual(typing_utils.get_variable_type_substitute(V), Exception)

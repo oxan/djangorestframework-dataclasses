@@ -1,7 +1,49 @@
+0.9, TBD
+--------
+Breaking changes:
+
+* ``build_nested_field()`` was renamed to ``build_dataclass_field()``.
+
+Features & fixes:
+
+* Support overriding serializer for a nested dataclass using ``serializer_field_mapping``.
+* Support overriding serializer for all nested dataclasses using ``serializer_dataclass_field`` property.
+* Support partial updates of nested dataclasses.
+* Support bound type variables.
+
+0.8, 6 November 2020
+--------------------
+Breaking changes:
+
+* The ``validated_data`` representation no longer contains the ``rest_framework.fields.empty`` sentinel value for
+  unsupplied fields. This reverts the breaking change from v0.7.
+
+Features & fixes:
+
+* Don't install tests into distributed packages.
+
+0.7, 23 October 2020
+--------------------
+Breaking changes:
+
+* The ``validated_data`` representation now contains the ``rest_framework.fields.empty`` sentinel value for fields where
+  no value was provided, instead of the default of the dataclass field. The value returned by ``save()`` is unchanged.
+  This was necessary to support partial updates.
+
+Features & fixes:
+
+* Improved Python 3.9 compatibility.
+* Support partial updates.
+* Support standard collection generics (PEP 585).
+* Support non-generic ``list`` and ``dict`` typehints.
+* Support final fields (PEP 591).
+* Support auto-generation for list or dictionaries of Any or variable type.
+* Set default ``max_digits`` and ``decimal_places`` for ``DecimalField``.
+* Improved error message when automatic field type deduction fails.
+
 0.6, 17 April 2020
 ------------------
-* Rewrite to ``save()`` implementation to finally fix all issues with nested
-  serializers.
+* Rewrite to ``save()`` implementation to finally fix all issues with nested serializers.
 * Fix deserialization for fields using ``source`` option.
 * Fix explicit specification of a method in the ``fields`` option.
 
@@ -16,7 +58,7 @@
 
 0.4, 03 February 2020
 ---------------------
-* Automatically recognize ``Literal``-typed fields.
+* Automatically recognize ``Literal``-typed fields (PEP 586).
 * Fix deserialization of dataclasses inside dictionaries.
 * Improve error message when encountering field with a special form type.
 
