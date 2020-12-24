@@ -115,6 +115,10 @@ def typed_view(view_function: Callable = None, *, body: str = '', serializers: D
         view_args = (args.pop(False), ) if is_method else ()
         view_kwargs = {}
 
+        # Try to detect if we're invoked as a view, and just passthrough if we're not -- this heuristic isn't perfect.
+        if len(args) != 1 or not isinstance(args[0], Request):
+            return view_function(*view_args, *args, **kwargs)
+
         request = args.pop()
         serializer_context = {'request': request, 'format': kwargs.get(api_settings.FORMAT_SUFFIX_KWARG, None)}
         if is_method:
