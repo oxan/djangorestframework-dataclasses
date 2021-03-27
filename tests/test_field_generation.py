@@ -39,8 +39,15 @@ class FieldsTest(unittest.TestCase):
         self.check_field_additional(type_hint, None, field, kwargs)
 
     def test_arguments(self):
-        # Check that Optional sets exactly required and allow_null (#16).
-        self.check_field(typing.Optional[int], fields.IntegerField, {'required': False, 'allow_null': True})
+        # Check that no qualifiers emit no arguments.
+        self.check_field_additional(int, None, fields.IntegerField, {})
+
+        # Check that a default value (factory) sets required to False (#16, #38).
+        self.check_field_additional(int, dataclasses.field(default=1), fields.IntegerField, {'required': False})
+        self.check_field_additional(int, dataclasses.field(default_factory=1), fields.IntegerField, {'required': False})
+
+        # Check that Optional sets allow_null to True (#16, #38).
+        self.check_field_additional(typing.Optional[int], None, fields.IntegerField, {'allow_null': True})
 
         # Check that Final sets exactly read_only.
         self.check_field(Final[int], fields.IntegerField, {'read_only': True})
@@ -75,7 +82,6 @@ class FieldsTest(unittest.TestCase):
         # check that kwargs generated for the child field are actually applied
         _, list_kwargs = self.build_typed_field(typing.List[typing.Optional[str]])
         self.assertIsInstance(list_kwargs['child'], fields.CharField)
-        self.assertFalse(list_kwargs['child'].required)
         self.assertTrue(list_kwargs['child'].allow_null)
 
         _, dict_kwargs = self.build_typed_field(typing.Dict[str, Literal['a', 'b', '']])
@@ -104,7 +110,6 @@ class FieldsTest(unittest.TestCase):
         # check that kwargs generated for the child field are actually applied
         _, list_kwargs = self.build_typed_field(list[typing.Optional[str]])
         self.assertIsInstance(list_kwargs['child'], fields.CharField)
-        self.assertFalse(list_kwargs['child'].required)
         self.assertTrue(list_kwargs['child'].allow_null)
 
         _, dict_kwargs = self.build_typed_field(dict[str, Literal['a', 'b', '']])
@@ -145,9 +150,9 @@ class FieldsTest(unittest.TestCase):
         self.check_field(Literal['a', 'b', ''], fields.ChoiceField,
                          {'choices': ['a', 'b'], 'allow_blank': True})
         self.check_field(Literal['a', 'b', None], fields.ChoiceField,
-                         {'choices': ['a', 'b'], 'allow_blank': False, 'required': False, 'allow_null': True})
+                         {'choices': ['a', 'b'], 'allow_blank': False, 'allow_null': True})
         self.check_field(Literal['a', 'b', '', None], fields.ChoiceField,
-                         {'choices': ['a', 'b'], 'allow_blank': True, 'required': False, 'allow_null': True})
+                         {'choices': ['a', 'b'], 'allow_blank': True, 'allow_null': True})
 
     def test_enum(self):
         class Color(enum.Enum):
