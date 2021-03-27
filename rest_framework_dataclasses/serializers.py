@@ -362,7 +362,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             # TODO: should we also set the default argument for the serializer field here (#38)?
 
         # Mark a field as nullable if it is declared as Optional[] (which has a confusing name).
-        if type_info.is_optional:
+        if type_info.is_nullable:
             field_kwargs['allow_null'] = True
 
         # The final qualifier declares that a variable or attribute should not be reassigned (PEP 591). Mark the field

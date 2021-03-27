@@ -21,7 +21,7 @@ class TypeInfo:
     is_many: bool
     is_mapping: bool
     is_final: bool
-    is_optional: bool
+    is_nullable: bool
     base_type: type
 
 
@@ -51,8 +51,8 @@ def get_type_info(tp: type, default_value_type: typing.Optional[type] = None) ->
         if tp is typing.Any and default_value_type is not None:
             tp = default_value_type
 
-    is_optional = typing_utils.is_optional_type(tp)
-    if is_optional:
+    is_nullable = typing_utils.is_optional_type(tp)
+    if is_nullable:
         tp = typing_utils.get_optional_type(tp)
 
     is_mapping = typing_utils.is_mapping_type(tp)
@@ -69,7 +69,7 @@ def get_type_info(tp: type, default_value_type: typing.Optional[type] = None) ->
     if tp is typing.Any:
         tp = None
 
-    return TypeInfo(is_many, is_mapping, is_final, is_optional, tp)
+    return TypeInfo(is_many, is_mapping, is_final, is_nullable, tp)
 
 
 def get_relation_info(type_info: TypeInfo) -> RelationInfo:
