@@ -68,7 +68,7 @@ def get_resolved_type_hints(tp: type) -> typing.Dict[str, type]:
             return resolve_type
 
         args = tuple(_resolve_type(context_type, arg) for arg in resolve_type.__args__)
-        return types.GenericAlias(resolve_type.__origin__, args)
+        return typing.cast(type, types.GenericAlias(resolve_type.__origin__, args))
 
     return {k: _resolve_type_hint(tp, v) for k, v in typing.get_type_hints(tp).items()}
 
@@ -187,9 +187,9 @@ def get_optional_type(tp: type) -> type:
     elif hasattr(types, 'UnionType') and isinstance(tp, types.UnionType):
         # The types in the `types` module can't be instantiated in a generic way. Luckily only types.UnionType is
         # relevant here, so handle it directly.
-        return typing.Union[remaining_arguments]
+        return typing.Union[remaining_arguments]  # type: ignore
     else:
-        return get_origin(tp)[remaining_arguments]
+        return get_origin(tp)[remaining_arguments]  # type: ignore
 
 
 def is_literal_type(tp: type) -> bool:
@@ -249,8 +249,10 @@ def get_variable_type_substitute(tp: type) -> type:
     """
     Get the substitute for a variable type.
     """
+    assert isinstance(tp, typing.TypeVar)
+
     if len(tp.__constraints__) > 0:
-        return typing.Union[tp.__constraints__]
+        return typing.Union[tp.__constraints__]  # type: ignore
     if tp.__bound__ is not None:
         return tp.__bound__
-    return typing.Any
+    return typing.Any  # type: ignore

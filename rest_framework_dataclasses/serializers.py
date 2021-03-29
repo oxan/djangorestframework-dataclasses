@@ -5,7 +5,7 @@ import decimal
 import uuid
 from collections import OrderedDict
 from enum import Enum
-from typing import Any, Dict, Generic, Iterable, Mapping, Optional, Tuple, Type, TypeVar
+from typing import cast, Any, Dict, Generic, Iterable, Mapping, Optional, Tuple, Type, TypeVar
 
 import rest_framework.fields
 import rest_framework.serializers
@@ -43,9 +43,9 @@ def _strip_empty_sentinels(data: AnyT, instance: Optional[AnyT] = None) -> AnyT:
         else:
             return type(data)(**values)
     elif isinstance(data, list):
-        return [_strip_empty_sentinels(item) for item in data]
+        return cast(AnyT, [_strip_empty_sentinels(item) for item in data])
     elif isinstance(data, dict):
-        return {key: _strip_empty_sentinels(value) for key, value in data.items()}
+        return cast(AnyT, {key: _strip_empty_sentinels(value) for key, value in data.items()})
     return data
 
 
@@ -609,7 +609,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         dataclass_type = self.dataclass_definition.dataclass_type
         instance = dataclass_type(**native_values, **empty_values)
 
-        return instance
+        return cast(T, instance)
 
     @cached_property
     def validated_data(self):
