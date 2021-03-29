@@ -5,7 +5,7 @@ import decimal
 import uuid
 from collections import OrderedDict
 from enum import Enum
-from typing import Any, Dict, Generic, Iterable, Optional, Tuple, Type, TypeVar
+from typing import Any, Dict, Generic, Iterable, Mapping, Optional, Tuple, Type, TypeVar
 
 import rest_framework.fields
 import rest_framework.serializers
@@ -66,7 +66,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
     """
 
     # The mapping of field types to serializer fields
-    serializer_field_mapping = {
+    serializer_field_mapping: Mapping[type, Type[SerializerField]] = {
         int:                rest_framework.fields.IntegerField,
         float:              rest_framework.fields.FloatField,
         bool:               rest_framework.fields.BooleanField,
@@ -80,16 +80,20 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         dict:               rest_framework.fields.DictField,
         list:               rest_framework.fields.ListField
     }
-    serializer_related_field = PrimaryKeyRelatedField
+    serializer_related_field: Type[SerializerField] = PrimaryKeyRelatedField
 
     # Unfortunately this cannot be an actual field as Python processes the class before it defines the class, but this
     # comes close enough.
     @property
-    def serializer_dataclass_field(self):
+    def serializer_dataclass_field(self) -> Type[SerializerField]:
         return DataclassSerializer
 
-    # Type hints
+    # Type hints for fields on the parent class
     _declared_fields: Dict[str, SerializerField]
+    _validated_data: T
+
+    # Type hints for fields
+    dataclass: Type[T]
 
     # Override constructor to allow "anonymous" usage by passing the dataclass type and extra kwargs as a constructor
     # parameter instead of via a Meta class.
@@ -119,7 +123,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
     # Parse and validate the configuration to a more usable format
 
     @cached_property
-    def dataclass_definition(self) -> DataclassDefinition:
+    def dataclass_definition(self) -> DataclassDefinition[T]:
         # Determine the dataclass that we should operate on.
         if self.dataclass:
             assert not hasattr(self, 'Meta'), (
@@ -159,7 +163,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
     def update(self, instance: T, validated_data: T) -> T:
         return _strip_empty_sentinels(validated_data, instance)
 
-    def save(self, **kwargs) -> T:
+    def save(self, **kwargs: KWArgs) -> T:
         assert hasattr(self, '_errors'), (
             "You must call `.is_valid()` before calling `.save()`."
         )
@@ -442,7 +446,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         """
         try:
             field_class = field_utils.lookup_type_in_mapping(self.serializer_field_mapping, type_info.base_type)
-            field_kwargs = {}
+            field_kwargs: KWArgs = {}
 
             return field_class, field_kwargs
         except KeyError:
@@ -518,7 +522,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         Create a read only field for dataclass methods and properties.
         """
         field_class = rest_framework.fields.ReadOnlyField
-        field_kwargs = {}
+        field_kwargs: KWArgs = {}
 
         return field_class, field_kwargs
 

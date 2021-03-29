@@ -5,14 +5,16 @@ import typing
 from rest_framework.utils.model_meta import RelationInfo
 
 from rest_framework_dataclasses import typing_utils
+from rest_framework_dataclasses.types import Dataclass
 
+TDataclass = typing.TypeVar('TDataclass', bound=Dataclass)
 T = typing.TypeVar('T')
 
 
 @dataclasses.dataclass
-class DataclassDefinition:
-    dataclass_type: type
-    fields: typing.Dict[str, dataclasses.Field]
+class DataclassDefinition(typing.Generic[T]):
+    dataclass_type: typing.Type[T]
+    fields: typing.Dict[str, dataclasses.Field[typing.Any]]
     field_types: typing.Dict[str, type]
 
 
@@ -25,7 +27,7 @@ class TypeInfo:
     base_type: type
 
 
-def get_dataclass_definition(dataclass_type: type) -> DataclassDefinition:
+def get_dataclass_definition(dataclass_type: typing.Type[T]) -> DataclassDefinition[T]:
     """
     Given a dataclass class, returns a dictionary mapping field names to
     `dataclasses.Field` instances describing all fields on the dataclass.
@@ -85,7 +87,7 @@ def get_relation_info(type_info: TypeInfo) -> RelationInfo:
     )
 
 
-def lookup_type_in_mapping(mapping: typing.Dict[type, T], key: type) -> T:
+def lookup_type_in_mapping(mapping: typing.Mapping[type, T], key: type) -> T:
     # Allow all types, including special forms, to be used when they're present in the mapping
     if key in mapping:
         return mapping[key]

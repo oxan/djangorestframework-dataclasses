@@ -4,6 +4,7 @@ import sys
 
 from typing import ClassVar, Dict, Union
 
+# Alias these types in this module for ease of use elsewhere.
 if sys.version_info >= (3, 8):
     from typing import Final, Literal, Protocol
 else:
