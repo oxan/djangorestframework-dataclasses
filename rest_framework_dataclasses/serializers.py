@@ -351,10 +351,26 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         else:
             field_class, field_kwargs = self.build_standard_field(field_name, type_info)
 
-        if type_info.is_optional:
+        # Mark a field as not-required if it has a default value (factory) on the dataclass. This is consistent with the
+        # constructor of dataclasses, where these fields are also made optional. Note that this is different from the
+        # `typing.Optional[]` qualifier, which merely makes the field nullable, but still requires it to be passed. Of
+        # course it makes sense for `Optional` fields to have `None` as a default value, but that's up to the user.
+        field = self.dataclass_definition.fields[field_name]
+        if field.default is not dataclasses.MISSING or field.default_factory is not dataclasses.MISSING:
             field_kwargs['required'] = False
+
+            # Explicitly don't set the default argument here. Setting it would cause the default value to be inserted in
+            # the native representation (`to_internal_value()` argument) if the field wasn't supplied by the user (for
+            # non-partial updates). This in turn would cause `update()` to overwrite non-supplied fields with the
+            # defaults, which is undesirable. Instead, let the dataclass constructor apply the default values when the
+            # dataclass is instantiated.
+
+        # Mark a field as nullable if it is declared as Optional[] (which has a confusing name).
+        if type_info.is_nullable:
             field_kwargs['allow_null'] = True
 
+        # The final qualifier declares that a variable or attribute should not be reassigned (PEP 591). Mark the field
+        # as read only.
         if type_info.is_final:
             field_kwargs['read_only'] = True
 

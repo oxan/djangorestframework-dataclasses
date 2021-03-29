@@ -2,6 +2,12 @@
 --------
 Breaking changes:
 
+* The serializer field for dataclass fields that have a default value or default value factory, are now marked as
+  optional (``required=False``).
+* Marking dataclass fields with ``typing.Optional`` no longer causes the serializer fields to be optional (they will
+  still be marked as nullable). In previous versions these fields would be optional, which broke if a field had no
+  default value. Due to the previous change, the common case of fields marked with ``typing.Optional`` that had ``None``
+  as a default value have no change in behaviour.
 * ``build_nested_field()`` was renamed to ``build_dataclass_field()``.
 
 Features & fixes:

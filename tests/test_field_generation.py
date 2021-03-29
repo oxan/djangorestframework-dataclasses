@@ -19,20 +19,43 @@ from rest_framework_dataclasses.types import Final, Literal
 
 
 class FieldsTest(unittest.TestCase):
-    def build_typed_field(self, type_hint, extra_kwargs=None):
-        testclass = dataclasses.make_dataclass('TestDataclass', [('test_field', type_hint)])
+    def build_typed_field(self, type_hint, field=None, extra_kwargs=None):
+        field_tuple = ('test_field', type_hint, field) if field else ('test_field', type_hint)
+        testclass = dataclasses.make_dataclass('TestDataclass', [field_tuple])
         serializer = DataclassSerializer(dataclass=testclass)
         type_info = field_utils.get_type_info(serializer.dataclass_definition.field_types['test_field'])
 
         extra_kwargs = extra_kwargs or {}
         return serializer.build_typed_field('test_field', type_info, extra_kwargs)
 
-    def check_field(self, type_hint, field, kwargs=None):
-        field_class, field_kwargs = self.build_typed_field(type_hint)
-        self.assertTrue(field_class == field, f'for field of type {type_hint}')
+    def check_field_additional(self, type_hint, field, serializer_field, serializer_kwargs=None):
+        field_class, field_kwargs = self.build_typed_field(type_hint, field)
+        self.assertTrue(field_class == serializer_field)
 
-        if kwargs is not None:
-            self.assertDictEqual(field_kwargs, kwargs, f'arguments for field of type {type_hint}')
+        if serializer_kwargs is not None:
+            self.assertDictEqual(field_kwargs, serializer_kwargs, f'arguments for field of type {type_hint}')
+
+    def check_field(self, type_hint, field, kwargs=None):
+        self.check_field_additional(type_hint, None, field, kwargs)
+
+    def test_arguments(self):
+        # Check that no qualifiers emit no arguments.
+        self.check_field_additional(int, None, fields.IntegerField, {})
+
+        # Check that a default value (factory) sets required to False (#16, #38).
+        self.check_field_additional(int, dataclasses.field(default=1), fields.IntegerField, {'required': False})
+        self.check_field_additional(int, dataclasses.field(default_factory=1), fields.IntegerField, {'required': False})
+
+        # Check that Optional sets allow_null to True (#16, #38).
+        self.check_field_additional(typing.Optional[int], None, fields.IntegerField, {'allow_null': True})
+
+        # Check that Final sets exactly read_only.
+        self.check_field(Final[int], fields.IntegerField, {'read_only': True})
+
+        # Final fields without an explicit type are not supported if the default value is not known. The case with a
+        # default value is tested in create_field().
+        with self.assertRaises(NotImplementedError):
+            self.check_field(Final, fields.CharField, {'read_only': True})
 
     def test_composite(self):
         var_type = typing.TypeVar('var_type')
@@ -59,7 +82,6 @@ class FieldsTest(unittest.TestCase):
         # check that kwargs generated for the child field are actually applied
         _, list_kwargs = self.build_typed_field(typing.List[typing.Optional[str]])
         self.assertIsInstance(list_kwargs['child'], fields.CharField)
-        self.assertFalse(list_kwargs['child'].required)
         self.assertTrue(list_kwargs['child'].allow_null)
 
         _, dict_kwargs = self.build_typed_field(typing.Dict[str, Literal['a', 'b', '']])
@@ -88,7 +110,6 @@ class FieldsTest(unittest.TestCase):
         # check that kwargs generated for the child field are actually applied
         _, list_kwargs = self.build_typed_field(list[typing.Optional[str]])
         self.assertIsInstance(list_kwargs['child'], fields.CharField)
-        self.assertFalse(list_kwargs['child'].required)
         self.assertTrue(list_kwargs['child'].allow_null)
 
         _, dict_kwargs = self.build_typed_field(dict[str, Literal['a', 'b', '']])
@@ -100,8 +121,6 @@ class FieldsTest(unittest.TestCase):
         refclass = dataclasses.make_dataclass('ReferencedDataclass', [])
         self.check_field(refclass, DataclassSerializer,
                          {'dataclass': refclass, 'many': False})
-        self.check_field(typing.Optional[refclass], DataclassSerializer,
-                         {'dataclass': refclass, 'many': False, 'required': False, 'allow_null': True})
 
         # customizing the dataclass serializer by changing the serializer_dataclass_field property
         subclassed_serializer = type('SubclassedDataclassSerializer1', (DataclassSerializer, ), {})
@@ -124,8 +143,6 @@ class FieldsTest(unittest.TestCase):
 
         self.check_field(Person, relations.PrimaryKeyRelatedField,
                          {'queryset': Person._default_manager})
-        self.check_field(typing.Optional[Person], relations.PrimaryKeyRelatedField,
-                         {'queryset': Person._default_manager, 'required': False, 'allow_null': True})
 
     def test_literal(self):
         self.check_field(Literal['a', 'b'], fields.ChoiceField,
@@ -133,11 +150,9 @@ class FieldsTest(unittest.TestCase):
         self.check_field(Literal['a', 'b', ''], fields.ChoiceField,
                          {'choices': ['a', 'b'], 'allow_blank': True})
         self.check_field(Literal['a', 'b', None], fields.ChoiceField,
-                         {'choices': ['a', 'b'], 'allow_blank': False, 'required': False, 'allow_null': True})
-        self.check_field(typing.Optional[Literal['a', 'b']], fields.ChoiceField,
-                         {'choices': ['a', 'b'], 'allow_blank': False, 'required': False, 'allow_null': True})
+                         {'choices': ['a', 'b'], 'allow_blank': False, 'allow_null': True})
         self.check_field(Literal['a', 'b', '', None], fields.ChoiceField,
-                         {'choices': ['a', 'b'], 'allow_blank': True, 'required': False, 'allow_null': True})
+                         {'choices': ['a', 'b'], 'allow_blank': True, 'allow_null': True})
 
     def test_enum(self):
         class Color(enum.Enum):
@@ -152,21 +167,6 @@ class FieldsTest(unittest.TestCase):
         self.check_field(float, fields.FloatField)
         self.check_field(bool, fields.BooleanField)
         self.check_field(str, fields.CharField)
-
-        # Check that optional sets exactly required and allow_null (#16).
-        self.check_field(typing.Optional[int], fields.IntegerField,
-                         {'required': False, 'allow_null': True})
-        self.check_field(typing.Optional[str], fields.CharField,
-                         {'required': False, 'allow_null': True})
-
-    def test_standard_final(self):
-        self.check_field(Final[int], fields.IntegerField, {'read_only': True})
-        self.check_field(Final[str], fields.CharField, {'read_only': True})
-
-        # Final fields without an explicit type are not supported if the default value is not known. The case with a
-        # default value is tested in create_field().
-        with self.assertRaises(NotImplementedError):
-            self.check_field(Final, fields.CharField, {'read_only': True})
 
     def test_standard_variable(self):
         var_str = typing.TypeVar('var_str', bound=str)
