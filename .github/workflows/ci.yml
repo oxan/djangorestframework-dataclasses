@@ -20,6 +20,7 @@ jobs:
       - name: Install dependencies
         run: pip install tox codecov
       - name: Run tox
-        run: tox --skip-missing-interpreters
+        # There's probably a better way to do this...
+        run: tox -e $(tox -l | grep ^py$(echo "${{ matrix.python }}" | sed 's/.//;s/-dev//')- | tr '\n' ',')
       - name: Upload coverage
         run: codecov
