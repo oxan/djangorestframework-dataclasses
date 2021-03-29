@@ -307,7 +307,7 @@ class SerializerTest(TestCase):
             length: int = dataclasses.field(metadata={'serializer_kwargs': {'max_value': 200}})
             species: types.Final = 'Human'
 
-            def age(self):
+            def age(self) -> int:
                 pass
 
         serializer = self.create_serializer(TestPerson)

@@ -6,7 +6,7 @@ import enum
 import typing
 import uuid
 
-from unittest import TestCase, expectedFailure
+from unittest import TestCase
 
 from rest_framework import fields
 

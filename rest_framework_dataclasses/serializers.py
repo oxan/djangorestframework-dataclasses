@@ -469,7 +469,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
         return field_class, field_kwargs
 
-    def build_enum_field(self, field_name: str, type_info: TypeInfo):
+    def build_enum_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:
         """
         Create EnumField from a Enum type.
         """
