@@ -5,7 +5,7 @@ import decimal
 import uuid
 from collections import OrderedDict
 from enum import Enum
-from typing import Any, Dict, Generic, Iterable, Mapping, Tuple, Type, TypeVar
+from typing import Any, Dict, Generic, Iterable, Optional, Tuple, Type, TypeVar
 
 import rest_framework.fields
 import rest_framework.serializers
@@ -30,7 +30,7 @@ AnyT = TypeVar('AnyT')
 
 
 # Helper function to strip the empty sentinel value and replace it with the default value from a dataclass
-def _strip_empty_sentinels(data: AnyT, instance: AnyT = None) -> AnyT:
+def _strip_empty_sentinels(data: AnyT, instance: Optional[AnyT] = None) -> AnyT:
     if dataclasses.is_dataclass(data) and not isinstance(data, type):
         values = {field.name: _strip_empty_sentinels(getattr(data, field.name),
                                                      getattr(instance, field.name, None))
@@ -89,7 +89,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         return DataclassSerializer
 
     # Type hints
-    _declared_fields: Mapping[str, SerializerField]
+    _declared_fields: Dict[str, SerializerField]
 
     # Override constructor to allow "anonymous" usage by passing the dataclass type and extra kwargs as a constructor
     # parameter instead of via a Meta class.

@@ -81,7 +81,7 @@ def get_relation_info(type_info: TypeInfo) -> RelationInfo:
         related_model=type_info.base_type,
         to_many=type_info.is_many,
         # as there's no foreign key, it also cannot reference a field on the referenced model
-        to_field=None,
+        to_field='',
         has_through_model=False,
         # we're never the model
         reverse=False

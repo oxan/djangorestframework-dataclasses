@@ -38,7 +38,7 @@ except AttributeError:
     def get_origin(tp: type) -> type:
         return tp.__origin__ if isinstance(tp, typing._GenericAlias) else None
 
-    def get_args(tp: type) -> type:
+    def get_args(tp: type) -> typing.Tuple:
         return tp.__args__ if isinstance(tp, typing._GenericAlias) else ()
 
 # Some implementation notes:
@@ -245,7 +245,7 @@ def is_type_variable(tp: type) -> bool:
     return isinstance(tp, typing.TypeVar)
 
 
-def get_variable_type_substitute(tp: typing.TypeVar) -> type:
+def get_variable_type_substitute(tp: type) -> type:
     """
     Get the substitute for a variable type.
     """
