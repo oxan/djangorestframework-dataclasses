@@ -29,6 +29,26 @@ T = TypeVar('T', bound=Dataclass)
 AnyT = TypeVar('AnyT')
 
 
+# Helper function to strip the empty sentinel value and replace it with the default value from a dataclass
+def _strip_empty_sentinels(data: AnyT, instance: AnyT = None) -> AnyT:
+    if dataclasses.is_dataclass(data) and not isinstance(data, type):
+        values = {field.name: _strip_empty_sentinels(getattr(data, field.name),
+                                                     getattr(instance, field.name, None))
+                  for field in dataclasses.fields(data)
+                  if getattr(data, field.name) is not empty}
+        if instance:
+            for field, value in values.items():
+                setattr(instance, field, value)
+            return instance
+        else:
+            return type(data)(**values)
+    elif isinstance(data, list):
+        return [_strip_empty_sentinels(item) for item in data]
+    elif isinstance(data, dict):
+        return {key: _strip_empty_sentinels(value) for key, value in data.items()}
+    return data
+
+
 # noinspection PyMethodMayBeStatic
 class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
     """
@@ -78,6 +98,23 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         self.extra_kwargs = kwargs.pop('extra_kwargs', None)
         super(DataclassSerializer, self).__init__(*args, **kwargs)
 
+    @classmethod
+    def many_init(cls, *args, **kwargs):
+        """
+        Implements the creation of a `DataclassListSerializer` parent class when `many=True` is used.
+        """
+        list_kwargs = {key: value for key, value in kwargs.items()
+                       if key in rest_framework.serializers.LIST_SERIALIZER_KWARGS}
+        list_kwargs['child'] = cls(*args, **kwargs)
+
+        allow_empty = kwargs.pop('allow_empty', None)
+        if allow_empty is not None:
+            list_kwargs['allow_empty'] = allow_empty
+
+        meta = getattr(cls, 'Meta', None)
+        list_serializer_class = getattr(meta, 'list_serializer_class', DataclassListSerializer)
+        return list_serializer_class(*args, **list_kwargs)
+
     # Parse and validate the configuration to a more usable format
 
     @cached_property
@@ -115,29 +152,11 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
     # Default `create` and `update` behavior...
 
-    def _strip_empty_sentinels(self, data: AnyT, instance: AnyT = None) -> AnyT:
-        if dataclasses.is_dataclass(data) and not isinstance(data, type):
-            values = {field.name: self._strip_empty_sentinels(getattr(data, field.name),
-                                                              getattr(instance, field.name, None))
-                      for field in dataclasses.fields(data)
-                      if getattr(data, field.name) is not empty}
-            if instance:
-                for field, value in values.items():
-                    setattr(instance, field, value)
-                return instance
-            else:
-                return type(data)(**values)
-        elif isinstance(data, list):
-            return [self._strip_empty_sentinels(item) for item in data]
-        elif isinstance(data, dict):
-            return {key: self._strip_empty_sentinels(value) for key, value in data.items()}
-        return data
-
     def create(self, validated_data: T) -> T:
-        return self._strip_empty_sentinels(validated_data)
+        return _strip_empty_sentinels(validated_data)
 
     def update(self, instance: T, validated_data: T) -> T:
-        return self._strip_empty_sentinels(validated_data, instance)
+        return _strip_empty_sentinels(validated_data, instance)
 
     def save(self, **kwargs) -> T:
         assert hasattr(self, '_errors'), (
@@ -575,8 +594,22 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
     @cached_property
     def validated_data(self):
+        """
+        Replace empty sentinel value with default value in public representation. Note that this doesn't work for
+        partial updates.
+        """
         internal_validated_data = super(DataclassSerializer, self).validated_data
-        return self._strip_empty_sentinels(internal_validated_data)
+        return _strip_empty_sentinels(internal_validated_data)
+
+
+class DataclassListSerializer(rest_framework.serializers.ListSerializer):
+    @cached_property
+    def validated_data(self):
+        """
+        Replace empty sentinel value with default value in public representation.
+        """
+        internal_validated_data = super(DataclassListSerializer, self).validated_data
+        return _strip_empty_sentinels(internal_validated_data)
 
 
 class HyperlinkedDataclassSerializer(DataclassSerializer):
