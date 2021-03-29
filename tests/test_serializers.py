@@ -216,7 +216,13 @@ class SerializerTest(TestCase):
         check(dictoptional, {'field': {'K': {'value': 'A'}}}, dictoptional({'K': simple('A')}))
 
     def test_get_fields(self):
-        f = self.create_serializer(Person,
+        @dataclasses.dataclass
+        class TestPerson:
+            name: str
+            email: str = dataclasses.field(metadata={'serializer_field': fields.EmailField()})
+            birth_date: typing.Optional[datetime.date] = None
+
+        f = self.create_serializer(TestPerson,
                                    declared={'slug': fields.SlugField(source='name')},
                                    meta={'read_only_fields': ['birth_date'],
                                          'extra_kwargs': {'name': {'max_length': 15}}}).get_fields()
@@ -227,7 +233,7 @@ class SerializerTest(TestCase):
         self.assertTrue(f['name'].required)
         self.assertEqual(f['name'].max_length, 15)
 
-        self.assertIsInstance(f['length'], fields.IntegerField)
+        self.assertIsInstance(f['email'], fields.EmailField)
 
         self.assertIsInstance(f['birth_date'], fields.DateField)
         self.assertTrue(f['birth_date'].read_only)
@@ -236,7 +242,11 @@ class SerializerTest(TestCase):
         self.assertEqual(f['slug'].source, 'name')
 
         with self.assertRaises(AssertionError):
-            self.create_serializer(Person,
+            self.create_serializer(TestPerson,
+                                   meta={'read_only_fields': ['email']}).get_fields()
+
+        with self.assertRaises(AssertionError):
+            self.create_serializer(TestPerson,
                                    declared={'slug': fields.SlugField(source='name')},
                                    meta={'read_only_fields': ['slug']}).get_fields()
 
@@ -292,13 +302,27 @@ class SerializerTest(TestCase):
             self.create_serializer(Person, meta={'fields': ['name'], 'exclude': ['length']}).get_field_names()
 
     def test_create_field(self):
-        serializer = self.create_serializer(Person)
+        @dataclasses.dataclass
+        class TestPerson:
+            name: str
+            length: int = dataclasses.field(metadata={'serializer_kwargs': {'max_value': 200}})
+            species: types.Final = 'Human'
+
+            def age(self):
+                pass
+
+        serializer = self.create_serializer(TestPerson)
 
         # From a field
         name_field = serializer.create_field('name', {'max_length': 20, 'trim_whitespace': False})
         self.assertIsInstance(name_field, fields.CharField)
         self.assertEqual(name_field.max_length, 20)
         self.assertEqual(name_field.trim_whitespace, False)
+
+        # Field with metadata arguments
+        length_field = serializer.create_field('length', {})
+        self.assertIsInstance(length_field, fields.IntegerField)
+        self.assertEqual(length_field.max_value, 200)
 
         # Function field
         age_field = serializer.create_field('age', {})
@@ -314,9 +338,6 @@ class SerializerTest(TestCase):
             unknown_field = serializer.create_field('aliased', {'source': 'nonexisting'})
 
         # Final field with a default value
-        dc = dataclasses.make_dataclass('Person', [('species', types.Final, dataclasses.field(default='Human'))])
-        serializer = self.create_serializer(dc)
-
         species_field = serializer.create_field('species', {})
         self.assertIsInstance(species_field, fields.CharField)
         self.assertTrue(species_field.read_only)
