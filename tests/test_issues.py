@@ -62,3 +62,16 @@ class IssuesTest(TestCase):
                 fields = ('renamed_value', )
 
         self.check_deserialize(SimpleRenamedSerializer, data=data)
+
+    # Issue #39: many=True results in empty sentinel in validated_data for optional fields
+    def test_many_empty(self):
+        @dataclasses.dataclass
+        class HelloWorld:
+            value: str = 'default'
+
+        serializer = DataclassSerializer(dataclass=HelloWorld, many=True, data=[{}])
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        self.assertIsNot(fields.empty, data[0].value)
+        self.assertEqual('default', data[0].value)
