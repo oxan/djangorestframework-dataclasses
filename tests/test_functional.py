@@ -24,7 +24,13 @@ class Gender(enum.Enum):
 class Pet:
     animal: Literal['cat', 'dog']
     name: str
-    weight: typing.Optional[decimal.Decimal] = None
+    weight: typing.Optional[decimal.Decimal] = \
+        dataclasses.field(default=None, metadata={'serializer_kwargs': {'max_digits': 4, 'decimal_places': 1}})
+
+
+class PetSerializer(DataclassSerializer):
+    class Meta:
+        dataclass = Pet
 
 
 @dataclasses.dataclass
@@ -37,7 +43,8 @@ class Person:
     length: typing.Optional[decimal.Decimal] = None
     pets: typing.Optional[typing.List[Pet]] = None
     birth_date: typing.Optional[datetime.date] = None
-    favorite_pet: typing.Optional[Pet] = None
+    favorite_pet: typing.Optional[Pet] = \
+        dataclasses.field(default=None, metadata={'serializer_field': PetSerializer(allow_null=True)})
     movie_ratings: typing.Optional[typing.Dict[str, int]] = None
 
     def age(self) -> int:
@@ -45,17 +52,9 @@ class Person:
         return datetime.date(2020, 1, 1).year - self.birth_date.year if self.birth_date else None
 
 
-class PetSerializer(DataclassSerializer):
-    weight = fields.DecimalField(required=False, allow_null=True, max_digits=4, decimal_places=1)
-
-    class Meta:
-        dataclass = Pet
-
-
 class PersonSerializer(DataclassSerializer):
     full_name = fields.CharField(source='name')
     email = fields.EmailField()
-    favorite_pet = PetSerializer(allow_null=True)
     slug = fields.SlugField(source='name', read_only=True)
 
     class Meta:
