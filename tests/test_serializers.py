@@ -10,7 +10,8 @@ from rest_framework import fields, serializers
 from rest_framework.fields import empty
 
 from rest_framework_dataclasses import types
-from rest_framework_dataclasses.serializers import DataclassSerializer, HyperlinkedDataclassSerializer
+from rest_framework_dataclasses.serializers import (_strip_empty_sentinels,
+                                                    DataclassSerializer, HyperlinkedDataclassSerializer)
 
 
 @dataclasses.dataclass
@@ -72,19 +73,17 @@ class SerializerTest(TestCase):
             definition = self.create_serializer(str).dataclass_definition
 
     def test_strip_empty(self):
-        ser = self.create_serializer(Person)
-
         # simple
         in_data = Person(name='Alice', length=123, birth_date=empty)
         out_data = Person(name='Alice', length=123, birth_date=None)
-        self.assertEqual(ser._strip_empty_sentinels(in_data), out_data)
+        self.assertEqual(_strip_empty_sentinels(in_data), out_data)
 
         # nested dataclasses
         in_data = Group(leader=Person(name='Alice', length=123, birth_date=empty),
                         people=[Person(name='Bob', length=456, birth_date=empty)])
         out_data = Group(leader=Person(name='Alice', length=123),
                          people=[Person(name='Bob', length=456)])
-        self.assertEqual(ser._strip_empty_sentinels(in_data), out_data)
+        self.assertEqual(_strip_empty_sentinels(in_data), out_data)
 
     def test_save(self):
         def mock_save(validated_data, instance=None, **kwargs):
