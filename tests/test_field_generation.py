@@ -52,11 +52,6 @@ class FieldsTest(unittest.TestCase):
         # Check that Final sets exactly read_only.
         self.check_field(Final[int], fields.IntegerField, {'read_only': True})
 
-        # Final fields without an explicit type are not supported if the default value is not known. The case with a
-        # default value is tested in create_field().
-        with self.assertRaises(NotImplementedError):
-            self.check_field(Final, fields.CharField, {'read_only': True})
-
     def test_composite(self):
         var_type = typing.TypeVar('var_type')
 

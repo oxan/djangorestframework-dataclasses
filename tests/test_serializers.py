@@ -305,7 +305,7 @@ class SerializerTest(TestCase):
         class TestPerson:
             name: str
             length: int = dataclasses.field(metadata={'serializer_kwargs': {'max_value': 200}})
-            species: types.Final = 'Human'
+            species: types.Final[str] = 'Human'
 
             def age(self) -> int:
                 pass
@@ -340,6 +340,14 @@ class SerializerTest(TestCase):
         species_field = serializer.create_field('species', {})
         self.assertIsInstance(species_field, fields.CharField)
         self.assertTrue(species_field.read_only)
+
+        # Plain Final annotation should raise
+        with self.assertRaises(TypeError):
+            @dataclasses.dataclass
+            class TestFinal:
+                species: types.Final = 'Human'
+
+            self.create_serializer(TestFinal).create_field('species', {})
 
     def test_include_extra_kwargs(self):
         serializer = self.create_serializer()

@@ -344,8 +344,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         # Determine the serializer field class and keyword arguments.
         if source in self.dataclass_definition.fields:
             field = self.dataclass_definition.fields[source]
-            default_type = type(field.default) if field.default is not None else None
-            type_info = field_utils.get_type_info(self.dataclass_definition.field_types[source], default_type)
+            type_info = field_utils.get_type_info(self.dataclass_definition.field_types[source])
             field_class, field_kwargs = self.build_typed_field(source, type_info, extra_kwargs)
 
             # Include extra kwargs defined in the field metadata
