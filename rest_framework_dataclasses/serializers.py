@@ -359,7 +359,11 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         if field.default is not dataclasses.MISSING or field.default_factory is not dataclasses.MISSING:
             field_kwargs['required'] = False
 
-            # TODO: should we also set the default argument for the serializer field here (#38)?
+            # Explicitly don't set the default argument here. Setting it would cause the default value to be inserted in
+            # the native representation (`to_internal_value()` argument) if the field wasn't supplied by the user (for
+            # non-partial updates). This in turn would cause `update()` to overwrite non-supplied fields with the
+            # defaults, which is undesirable. Instead, let the dataclass constructor apply the default values when the
+            # dataclass is instantiated.
 
         # Mark a field as nullable if it is declared as Optional[] (which has a confusing name).
         if type_info.is_nullable:
