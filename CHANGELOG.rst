@@ -8,7 +8,6 @@ Breaking changes:
   still be marked as nullable). In previous versions these fields would be optional, which broke if a field had no
   default value. Due to the previous change, the common case of fields marked with ``typing.Optional`` that had ``None``
   as a default value have no change in behaviour.
-* ``build_nested_field()`` was renamed to ``build_dataclass_field()``.
 
 Features & fixes:
 
@@ -16,6 +15,9 @@ Features & fixes:
 * Support overriding serializer for all nested dataclasses using ``serializer_dataclass_field`` property.
 * Support partial updates of nested dataclasses.
 * Support bound type variables.
+* Support field generation for enumerations.
+* Support specifying serializer field configuration in dataclass field metadata.
+* Fix value for non-specified optional fields in validated_data on serializers with ``many=True``.
 
 0.8, 6 November 2020
 --------------------
