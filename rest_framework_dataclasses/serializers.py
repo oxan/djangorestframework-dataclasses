@@ -418,7 +418,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             field_class = self.serializer_field_mapping[list]
 
         # If the base type is not specified or is any type, we don't have to bother creating the child field.
-        if type_info.base_type is None:
+        if type_info.base_type is Any:
             return field_class, {}
 
         # Recurse to build the child field (i.e. the field of every instance). We pass the extra kwargs that are

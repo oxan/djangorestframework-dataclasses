@@ -65,9 +65,6 @@ def get_type_info(tp: type) -> TypeInfo:
     if typing_utils.is_type_variable(tp):
         tp = typing_utils.get_variable_type_substitute(tp)
 
-    if tp is typing.Any:
-        tp = None
-
     return TypeInfo(is_many, is_mapping, is_final, is_nullable, tp)
 
 

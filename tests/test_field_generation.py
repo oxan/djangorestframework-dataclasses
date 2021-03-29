@@ -207,6 +207,6 @@ class FieldsTest(unittest.TestCase):
 
         # Check _SpecialForm types that don't have an __mro__attribute (#6)
         msg = ("Automatic serializer field deduction not supported for field 'test_field' on 'TestDataclass' "
-               "of type 'typing.Any' (during search for field of type 'None').")
+               "of type 'typing.Any' (during search for field of type 'typing.Any').")
         with self.assertRaisesRegex(NotImplementedError, re.escape(msg)):
             self.build_typed_field(typing.Any)
