@@ -181,9 +181,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         declared_fields = copy.deepcopy(self._declared_fields)
 
         # Copy fields declared in metadata, for the same reason.
-        metadata_fields = {field.name: copy.deepcopy(field.metadata['drf_field'])
+        metadata_fields = {field.name: copy.deepcopy(field.metadata['serializer_field'])
                            for field in self.dataclass_definition.fields.values()
-                           if 'drf_field' in field.metadata}
+                           if 'serializer_field' in field.metadata}
 
         # Determine all fields that should be included on the serializer.
         field_names = self.get_field_names()
@@ -330,8 +330,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             field_class, field_kwargs = self.build_typed_field(source, type_info, extra_kwargs)
 
             # Include extra kwargs defined in the field metadata
-            if 'drf_field_args' in field.metadata:
-                field_kwargs = self.include_extra_kwargs(field_kwargs, field.metadata['drf_field_args'])
+            if 'serializer_kwargs' in field.metadata:
+                field_kwargs = self.include_extra_kwargs(field_kwargs, field.metadata['serializer_kwargs'])
         elif hasattr(self.dataclass_definition.dataclass_type, source):
             field_class, field_kwargs = self.build_property_field(source)
         else:
