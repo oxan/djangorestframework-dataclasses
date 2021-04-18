@@ -8,6 +8,8 @@ Breaking changes:
   still be marked as nullable). In previous versions these fields would be optional, which broke if a field had no
   default value. Due to the previous change, the common case of fields marked with ``typing.Optional`` that had ``None``
   as a default value have no change in behaviour.
+* Drop support for generic ``typing.Final`` type hints (without the type specified), as ``typing.Final`` was never
+  supposed to be used in this way, and Python 3.10 will drop support for it.
 
 Features & fixes:
 
