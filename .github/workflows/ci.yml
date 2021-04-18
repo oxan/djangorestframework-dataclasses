@@ -18,9 +18,8 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Install dependencies
-        run: pip install tox codecov
+        run: pip install tox tox-gh-actions codecov
       - name: Run tox
-        # There's probably a better way to do this...
-        run: tox -e $(tox -l | grep ^py$(echo "${{ matrix.python }}" | sed 's/.//;s/-dev//')- | tr '\n' ',')
+        run: tox
       - name: Upload coverage
         run: codecov
