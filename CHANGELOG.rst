@@ -1,5 +1,5 @@
-0.9, TBD
---------
+0.9, 18 April 2021
+------------------
 Breaking changes:
 
 * The serializer field for dataclass fields that have a default value or default value factory, are now marked as
