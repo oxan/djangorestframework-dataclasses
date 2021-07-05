@@ -31,6 +31,13 @@ class EnumField(ChoiceField):
             self.fail('invalid_choice', input=data)
 
     def to_representation(self, value):
+        # Some external libraries expect to be able to call to_representation() with the key from the choices
+        # array, which seems at least somewhat reasonable. See #40.
+        if not isinstance(value, self.enum_class):
+            if value in self.choices:
+                return value
+            self.fail('invalid_choice', input=value)
+
         if self.by_name:
             return value.name
         else:

@@ -36,3 +36,7 @@ class FieldTest(TestCase):
         self.assertEqual(field.to_representation(Color.GREEN), 'GREEN')
         with self.assertRaises(ValidationError):
             field.to_internal_value('FF0000')
+
+        self.assertEqual(field.to_representation('RED'), 'RED')
+        with self.assertRaises(ValidationError):
+            field.to_representation('FFFFFF')
