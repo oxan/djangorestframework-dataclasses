@@ -1,3 +1,9 @@
+0.10, 19 July 2021
+------------------
+Features & fixes:
+
+* Fix ``EnumField`` compatibility with drf-yasg.
+
 0.9, 18 April 2021
 ------------------
 Breaking changes:
