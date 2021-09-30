@@ -272,10 +272,11 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         # For explicitly specified fields, ensure that they are valid.
         for field_name in fields:
             assert (
-                field_name == rest_framework.serializers.ALL_FIELDS or                         # all fields magic option
-                field_name in self.dataclass_definition.fields or                              # dataclass fields
-                field_name in declared_field_names or                                          # declared fields
-                callable(getattr(self.dataclass_definition.dataclass_type, field_name, None))  # methods
+                field_name == rest_framework.serializers.ALL_FIELDS or                                        # all fields magic option
+                field_name in self.dataclass_definition.fields or                                             # dataclass fields
+                field_name in declared_field_names or                                                         # declared fields
+                isinstance(getattr(self.dataclass_definition.dataclass_type, field_name, None), property) or  # property
+                callable(getattr(self.dataclass_definition.dataclass_type, field_name, None))                 # methods
             ), (
                 "The field '{field_name}' was included on serializer {serializer_class} in the `fields` option, "
                 "but does not match any dataclass field."

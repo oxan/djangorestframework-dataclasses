@@ -51,6 +51,9 @@ class Person:
         # don't use current date to keep test deterministic, and we don't care that this calculation is actually wrong.
         return datetime.date(2020, 1, 1).year - self.birth_date.year if self.birth_date else None
 
+    def is_child(self) -> bool:
+        return self.age() < 18 if self.birth_date else None
+
 
 class PersonSerializer(DataclassSerializer):
     full_name = fields.CharField(source='name')
@@ -60,7 +63,7 @@ class PersonSerializer(DataclassSerializer):
     class Meta:
         dataclass = Person
         fields = ('id', 'full_name', 'email', 'phone', 'gender', 'length', 'pets', 'birth_date', 'favorite_pet',
-                  'movie_ratings', 'slug', 'age')
+                  'movie_ratings', 'slug', 'age', 'is_child')
         extra_kwargs = {
             'id': {'format': 'hex'},
             'phone': {'child_kwargs': {'max_length': 15}},
@@ -136,6 +139,7 @@ class PersonTest(TestCase, FunctionalTestMixin):
         ],
         'birth_date': '1980-04-01',
         'age': 40,
+        'is_child': False,
         'favorite_pet': {'animal': 'cat', 'name': 'Luna', 'weight': None},
         'movie_ratings': {'Star Wars': 8, 'Titanic': 4},
     }
@@ -166,6 +170,7 @@ class EmptyPersonTest(TestCase, FunctionalTestMixin):
         'pets': None,
         'birth_date': None,
         'age': None,
+        'is_child': None,
         'movie_ratings': None
     }
 

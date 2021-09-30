@@ -23,6 +23,10 @@ class Person:
     def age(self) -> int:
         pass
 
+    @property
+    def is_child(self) -> bool:
+        pass
+
 
 @dataclasses.dataclass
 class Group:
@@ -261,8 +265,8 @@ class SerializerTest(TestCase):
               ['name', 'length', 'birth_date'])
         check(self.create_serializer(Person, meta={'fields': (serializers.ALL_FIELDS, 'age')}),
               ['age', 'name', 'length', 'birth_date'])
-        check(self.create_serializer(Person, meta={'fields': ('age', )}),
-              ['age'])
+        check(self.create_serializer(Person, meta={'fields': ('age', 'is_child')}),
+              ['age', 'is_child'])
         check(self.create_serializer(Person, meta={'exclude': ['name']}),
               ['length', 'birth_date'])
         check(self.create_serializer(Person, declared={'age': fields.ReadOnlyField()}),
@@ -310,6 +314,10 @@ class SerializerTest(TestCase):
             def age(self) -> int:
                 pass
 
+            @property
+            def is_child(self) -> bool:
+                pass
+
         serializer = self.create_serializer(TestPerson)
 
         # From a field
@@ -326,6 +334,10 @@ class SerializerTest(TestCase):
         # Function field
         age_field = serializer.create_field('age', {})
         self.assertIsInstance(age_field, fields.ReadOnlyField)
+
+        # Property field
+        child_field = serializer.create_field('is_child', {})
+        self.assertIsInstance(child_field, fields.ReadOnlyField)
 
         # Aliased field
         aliased_field = serializer.create_field('aliased', {'source': 'name'})
