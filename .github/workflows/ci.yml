@@ -22,4 +22,4 @@ jobs:
       - name: Run tox
         run: tox
       - name: Upload coverage
-        run: codecov
+        uses: codecov/codecov-action@v2
