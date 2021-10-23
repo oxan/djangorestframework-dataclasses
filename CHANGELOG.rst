@@ -1,3 +1,10 @@
+1.0.0, 23 October 2021
+----------------------
+Features & fixes:
+
+* Allow serialization of properties created using @property decorator.
+* Allow dataclass types to be serialized by a type not inheriting from ``DataclassSerializer`` (usually a ``Field``).
+
 0.10, 19 July 2021
 ------------------
 Features & fixes:
