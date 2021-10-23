@@ -502,6 +502,10 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         except KeyError:
             field_class = self.serializer_dataclass_field
 
+        # allow user to map a dataclass to a regular serializer Field class
+        if not issubclass(field_class, DataclassSerializer):
+            return self.build_standard_field(field_name, type_info)
+
         field_kwargs = {'dataclass': type_info.base_type,
                         'many': type_info.is_many}
 

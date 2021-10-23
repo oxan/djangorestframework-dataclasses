@@ -127,6 +127,10 @@ class FieldsTest(unittest.TestCase):
         DataclassSerializer.serializer_field_mapping[refclass] = subclassed_serializer
         self.check_field(refclass, subclassed_serializer, {'dataclass': refclass, 'many': False})
 
+        # customizing the dataclass serializer by putting regular Field in the field mapping
+        DataclassSerializer.serializer_field_mapping[refclass] = fields.CharField
+        self.check_field(refclass, fields.CharField, {})
+
     def test_relational(self):
         django.setup()
 
