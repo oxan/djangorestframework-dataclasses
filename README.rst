@@ -116,8 +116,9 @@ The auto-generated serializer fields are configured based on type qualifiers in 
 * Fields with a default value (factory) are marked as optional on the serializer (``required=False``). This means that
   these fields don't need to be supplied during deserialization.
 
-* Fields marked as nullable through ``typing.Optional`` or ``typing.Union[X, None]`` are marked as nullable on the
-  serializer (``allow_null=True``). This means that ``None`` is accepted as a valid value during deserialization.
+* Fields marked as nullable through ``typing.Optional``, ``typing.Union[X, None]`` or ``X | None`` (`PEP 604`_) are
+  marked as nullable on the serializer (``allow_null=True``). This means that ``None`` is accepted as a valid value
+  during deserialization.
 
 * Fields marked as final through ``typing.Final`` (as in `PEP 591`_) are marked as read-only on the serializer
   (``read_only=True``).
@@ -443,4 +444,5 @@ Note that until version 1.0 these API's are not declared stable yet and might ch
 
 .. _`PEP 591`: https://www.python.org/dev/peps/pep-0591/
 .. _`PEP 585`: https://www.python.org/dev/peps/pep-0585/
+.. _`PEP 604`: https://www.python.org/dev/peps/pep-0604/
 .. _`property decorator`: https://docs.python.org/3/library/functions.html#property
