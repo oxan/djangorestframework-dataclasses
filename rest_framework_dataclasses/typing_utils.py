@@ -26,6 +26,13 @@ if hasattr(typing, '_BaseGenericAlias'):
 else:
     GenericAlias = typing._GenericAlias
 
+# types.UnionType was added in Python 3.10 for new PEP 604 pipe union syntax
+try:
+    from types import UnionType
+    UNION_TYPES = (typing.Union, UnionType)
+except ImportError:
+    UNION_TYPES = (typing.Union,)
+
 # Wrappers around typing.get_origin() and typing.get_args() for Python 3.7
 try:
     get_origin = typing.get_origin
@@ -131,7 +138,7 @@ def is_optional_type(tp: type) -> bool:
     none_type = type(None)
     return (
         origin is not None and
-        origin is typing.Union and
+        origin in UNION_TYPES and
         any(argument_type is none_type for argument_type in args) and
         any(argument_type is not none_type for argument_type in args)
     ) or (

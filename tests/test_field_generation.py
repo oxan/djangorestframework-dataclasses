@@ -112,6 +112,11 @@ class FieldsTest(unittest.TestCase):
         self.assertDictEqual(dict_kwargs['child'].choices, {'a': 'a', 'b': 'b'})
         self.assertTrue(dict_kwargs['child'].allow_blank)
 
+    @unittest.skipIf(sys.version_info < (3, 10, 0), 'Python 3.10 required')
+    def test_composite_pep604(self):
+        self.check_field(typing.List[str] | None, fields.ListField)
+        self.check_field(typing.Dict[str, int] | None, fields.DictField)
+
     def test_nested(self):
         refclass = dataclasses.make_dataclass('ReferencedDataclass', [])
         self.check_field(refclass, DataclassSerializer,

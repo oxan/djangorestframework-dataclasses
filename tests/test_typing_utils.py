@@ -79,6 +79,17 @@ class TypingTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             typing_utils.get_optional_type(str)
 
+    @unittest.skipIf(sys.version_info < (3, 10, 0), 'Python 3.10 required')
+    def test_optional_pep604(self):
+        # New PEP 604 union syntax in Python 3.10+
+        self.assertTrue(typing_utils.is_optional_type(str | None))
+        self.assertTrue(typing_utils.is_optional_type(None | str))
+
+        self.assertEqual(typing_utils.get_optional_type(str | None), str)
+        self.assertEqual(typing_utils.get_optional_type(None | str), str)
+
+        self.assertFalse(typing_utils.is_optional_type(int | str))
+
     def test_final(self):
         self.assertTrue(typing_utils.is_final_type(types.Final[int]))
         self.assertTrue(typing_utils.is_final_type(types.Final))
