@@ -1,5 +1,5 @@
-UNRELEASED
-----------
+1.1.0, 9 January 2021
+---------------------
 Features & fixes:
 
 * Allow using the new ``X | None`` union syntax for specifying optional fields in Python 3.10+ (PEP 604).
