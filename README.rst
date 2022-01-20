@@ -10,6 +10,8 @@ A `dataclasses <https://docs.python.org/3/library/dataclasses.html>`__ serialize
    :target: https://codecov.io/gh/oxan/djangorestframework-dataclasses
 .. image:: https://badge.fury.io/py/djangorestframework-dataclasses.svg
    :target: https://badge.fury.io/py/djangorestframework-dataclasses
+.. image:: https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=df2540
+   :target: https://github.com/sponsors/oxan
 
 
 Requirements
