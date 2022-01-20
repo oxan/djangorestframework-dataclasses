@@ -20,12 +20,6 @@ import typing
 
 from .types import Final, Literal
 
-# typing._BaseGenericAlias was split-out from GenericAlias in Python 3.9
-if hasattr(typing, '_BaseGenericAlias'):
-    GenericAlias = typing._BaseGenericAlias
-else:
-    GenericAlias = typing._GenericAlias
-
 # types.UnionType was added in Python 3.10 for new PEP 604 pipe union syntax
 try:
     from types import UnionType
@@ -38,11 +32,12 @@ try:
     get_origin = typing.get_origin
     get_args = typing.get_args
 except AttributeError:
+    # This is only for Python 3.7, so we don't have to worry about typing._BaseGenericAlias
     def get_origin(tp: type) -> type:
-        return tp.__origin__ if isinstance(tp, GenericAlias) else None
+        return tp.__origin__ if isinstance(tp, typing._GenericAlias) else None
 
     def get_args(tp: type) -> type:
-        return tp.__args__ if isinstance(tp, GenericAlias) else ()
+        return tp.__args__ if isinstance(tp, typing._GenericAlias) else ()
 
 # Some implementation notes:
 # * We detect if types are a generic by whether their origin is not None.
