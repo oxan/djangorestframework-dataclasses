@@ -1,5 +1,7 @@
 import dataclasses
+import sys
 import typing
+import unittest
 
 from unittest import TestCase
 
@@ -75,3 +77,14 @@ class IssuesTest(TestCase):
 
         self.assertIsNot(fields.empty, data[0].value)
         self.assertEqual('default', data[0].value)
+
+    # Issue #51: Forward references do not work with PEP 585 generics
+    @unittest.skipIf(sys.version_info < (3, 9, 0), 'Python 3.9 required')
+    def test_forward_reference_list(self):
+        @dataclasses.dataclass
+        class WithForwardReferences:
+            children: list['Simple']
+            nested_children: list[list['Simple']]
+
+        serializer = DataclassSerializer(dataclass=WithForwardReferences)
+        serializer.get_fields()

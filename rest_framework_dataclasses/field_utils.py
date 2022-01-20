@@ -30,9 +30,7 @@ def get_dataclass_definition(dataclass_type: type) -> DataclassDefinition:
     Given a dataclass class, returns a dictionary mapping field names to
     `dataclasses.Field` instances describing all fields on the dataclass.
     """
-    # Resolve the typehint from the dataclass fields (which can be stringified, especially with PEP 563 nowadays) to
-    # actual type objects. Based on the discussion in https://stackoverflow.com/a/55938344.
-    types = typing.get_type_hints(dataclass_type)
+    types = typing_utils.get_resolved_type_hints(dataclass_type)
 
     # Disable PyCharm warning here, as it is wrong.
     # noinspection PyDataclass

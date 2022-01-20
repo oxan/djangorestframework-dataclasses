@@ -1,3 +1,7 @@
+1.1.1, TBD
+----------
+* Fix usage of PEP 585 generics with forward references (e.g. ``list["str"]``).
+
 1.1.0, 9 January 2021
 ---------------------
 Features & fixes:

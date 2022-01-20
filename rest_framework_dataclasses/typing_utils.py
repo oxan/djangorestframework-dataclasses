@@ -16,15 +16,16 @@ Note that there was some promising development in the `typing_inspect` module, b
 development seems to have stalled. Maybe in the future?
 """
 import collections
+import sys
+import types
 import typing
 
 from .types import Final, Literal
 
 # types.UnionType was added in Python 3.10 for new PEP 604 pipe union syntax
 try:
-    from types import UnionType
-    UNION_TYPES = (typing.Union, UnionType)
-except ImportError:
+    UNION_TYPES = (typing.Union, types.UnionType)
+except AttributeError:
     UNION_TYPES = (typing.Union,)
 
 # Wrappers around typing.get_origin() and typing.get_args() for Python 3.7
@@ -43,6 +44,32 @@ except AttributeError:
 # * We detect if types are a generic by whether their origin is not None.
 # * Some origins (most notably literals) aren't a type, so before doing issubclass() on an origin, we need to check
 #   if it's a type.
+
+
+def get_resolved_type_hints(tp: type) -> typing.Dict[str, type]:
+    """
+    Get the resolved type hints of an object.
+
+    Resolving the type hints means converting any stringified type hint into an actual type object. These can come from
+    either forward references (PEP 484), or postponed evaluation (PEP 563).
+    """
+    # typing.get_type_hints() does the heavy lifting for us, except when using PEP 585 generic types that contain a
+    # stringified type hint (see https://bugs.python.org/issue41370)
+    def _resolve_type(context_type: type, resolve_type: typing.Union[str, type]) -> type:
+        if isinstance(resolve_type, str):
+            globalsns = sys.modules[context_type.__module__].__dict__
+            return globalsns.get(resolve_type, resolve_type)
+        else:
+            return _resolve_type_hint(context_type, resolve_type)
+
+    def _resolve_type_hint(context_type: type, resolve_type: type) -> type:
+        if not hasattr(types, 'GenericAlias') or not isinstance(resolve_type, types.GenericAlias):
+            return resolve_type
+
+        args = tuple(_resolve_type(context_type, arg) for arg in resolve_type.__args__)
+        return types.GenericAlias(resolve_type.__origin__, args)
+
+    return {k: _resolve_type_hint(tp, v) for k, v in typing.get_type_hints(tp).items()}
 
 
 def is_iterable_type(tp: type) -> bool:
