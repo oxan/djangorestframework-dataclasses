@@ -440,8 +440,6 @@ serializer fields are generated:
   models, nested dataclasses, enums, literals, and lists or dictionaries. These can be overridden to change the field
   generation logic.
 
-Note that until version 1.0 these API's are not declared stable yet and might change if necessary.
-
 .. _`PEP 591`: https://www.python.org/dev/peps/pep-0591/
 .. _`PEP 585`: https://www.python.org/dev/peps/pep-0585/
 .. _`PEP 604`: https://www.python.org/dev/peps/pep-0604/

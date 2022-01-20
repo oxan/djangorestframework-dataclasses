@@ -7,10 +7,11 @@ document what should be supported here, and to see what needs to be fixed for a 
 
 Requirements for this module:
 
-  * Support for Python 3.7 - 3.9
+  * Support for Python 3.7 and above
   * Support both immediate and postponed evaluation of annotations (PEP 563, i.e. `from __future__ import annotations`)
   * Support collection generics from the typing module (i.e. typing.List[int])
   * Support standard collection generics (PEP 585, i.e. list[int])
+  * Support pipe operator syntax for unions (PEP 604, i.e. int | str)
 
 Note that there was some promising development in the `typing_inspect` module, but it is still marked experimental and
 development seems to have stalled. Maybe in the future?
