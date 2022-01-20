@@ -18,8 +18,10 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Install dependencies
-        run: pip install tox tox-gh-actions codecov
+        run: pip install tox tox-gh-actions coverage[toml]
       - name: Run tox
         run: tox
+      - name: Generate coverage report
+        run: coverage xml
       - name: Upload coverage
         uses: codecov/codecov-action@v2

@@ -16,6 +16,7 @@ MANIFEST
 # Testing
 .coverage
 .tox/
+coverage.xml
 
 # Environments
 .env
