@@ -73,6 +73,7 @@ class TypingTest(unittest.TestCase):
 
         self.assertEqual(typing_utils.get_optional_type(typing.Optional[str]), str)
         self.assertEqual(typing_utils.get_optional_type(typing.Union[str, None]), str)
+        self.assertEqual(typing_utils.get_optional_type(typing.Union[None, str]), str)
         self.assertEqual(typing_utils.get_optional_type(typing.Union[str, typing.Optional[str]]), str)
         self.assertEqual(typing_utils.get_optional_type(typing.Union[str, typing.Union[str, None]]), str)
 

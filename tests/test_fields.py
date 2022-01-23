@@ -40,3 +40,7 @@ class FieldTest(TestCase):
         self.assertEqual(field.to_representation('RED'), 'RED')
         with self.assertRaises(ValidationError):
             field.to_representation('FFFFFF')
+
+        # check explicit specification of options
+        field = EnumField(Color, choices=[('FF0000', 'RED'), ('00FF00', 'GREEN')])
+        self.assertEqual(len(field.choices), 2)

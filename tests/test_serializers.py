@@ -1,7 +1,6 @@
 import copy
 import dataclasses
 import datetime
-import sys
 import typing
 
 from unittest import TestCase
