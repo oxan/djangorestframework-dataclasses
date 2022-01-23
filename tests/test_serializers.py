@@ -11,8 +11,12 @@ from rest_framework import fields, serializers
 from rest_framework.fields import empty
 
 from rest_framework_dataclasses import types
-from rest_framework_dataclasses.serializers import (_strip_empty_sentinels,
-                                                    DataclassSerializer, HyperlinkedDataclassSerializer)
+from rest_framework_dataclasses.serializers import (
+    _strip_empty_sentinels,
+    DataclassListSerializer,
+    DataclassSerializer,
+    HyperlinkedDataclassSerializer
+)
 
 
 @dataclasses.dataclass
@@ -49,6 +53,15 @@ class SerializerTest(TestCase):
 
         serializer_type = type('TestSerializer', (DataclassSerializer, ), classdict)
         return serializer_type(**arguments)
+
+    def test_many(self):
+        ser = self.create_serializer(Person, {'many': True})
+        self.assertIsInstance(ser, DataclassListSerializer)
+        self.assertIsInstance(ser.child, DataclassSerializer)
+        self.assertTrue(ser.allow_empty)
+
+        ser = self.create_serializer(Person, {'many': True, 'allow_empty': False})
+        self.assertFalse(ser.allow_empty)
 
     def test_definition(self):
         definition = self.create_serializer(Person).dataclass_definition

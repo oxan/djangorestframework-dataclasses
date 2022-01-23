@@ -103,11 +103,12 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         """
         Implements the creation of a `DataclassListSerializer` parent class when `many=True` is used.
         """
+        allow_empty = kwargs.pop('allow_empty', None)
+
         list_kwargs = {key: value for key, value in kwargs.items()
                        if key in rest_framework.serializers.LIST_SERIALIZER_KWARGS}
         list_kwargs['child'] = cls(*args, **kwargs)
 
-        allow_empty = kwargs.pop('allow_empty', None)
         if allow_empty is not None:
             list_kwargs['allow_empty'] = allow_empty
 
