@@ -1,5 +1,5 @@
-1.1.1, TBD
-----------
+1.1.1, 25 January 2021
+----------------------
 * Fix usage of PEP 585 generics with forward references (e.g. ``list["str"]``).
 * Fix usage of ``allow_empty`` with ``many=True``.
 
