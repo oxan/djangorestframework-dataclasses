@@ -10,9 +10,12 @@ A `dataclasses <https://docs.python.org/3/library/dataclasses.html>`__ serialize
    :target: https://codecov.io/gh/oxan/djangorestframework-dataclasses
 .. image:: https://badge.fury.io/py/djangorestframework-dataclasses.svg
    :target: https://badge.fury.io/py/djangorestframework-dataclasses
-.. image:: https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=df2540
+.. image:: https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=success
    :target: https://github.com/sponsors/oxan
 
+|
+
+.. contents:: :local:
 
 Requirements
 ------------
@@ -446,3 +449,13 @@ serializer fields are generated:
 .. _`PEP 585`: https://www.python.org/dev/peps/pep-0585/
 .. _`PEP 604`: https://www.python.org/dev/peps/pep-0604/
 .. _`property decorator`: https://docs.python.org/3/library/functions.html#property
+
+Schemas
+-------
+
+Starting from version 0.22.0, `drf-spectacular`_ natively supports ``DataclassSerializer``. For previous versions, you
+can include the `extension`_ in your project manually. You don't need to configure it, but you do need to import the
+module that contains the extension.
+
+.. _`drf-spectacular`: https://github.com/tfranzel/drf-spectacular
+.. _`extension`: https://github.com/tfranzel/drf-spectacular/blob/master/drf_spectacular/contrib/rest_framework_dataclasses.py
