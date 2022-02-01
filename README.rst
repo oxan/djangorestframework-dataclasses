@@ -453,7 +453,7 @@ serializer fields are generated:
 Schemas
 -------
 
-Starting from version 0.22.0, `drf-spectacular`_ natively supports ``DataclassSerializer``. For previous versions, you
+Starting from version 0.21.2, `drf-spectacular`_ natively supports ``DataclassSerializer``. For previous versions, you
 can include the `extension`_ in your project manually. You don't need to configure it, but you do need to import the
 module that contains the extension.
 
