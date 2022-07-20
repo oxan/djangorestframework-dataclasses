@@ -27,6 +27,7 @@ SerializerField = rest_framework.fields.Field
 SerializerFieldDefinition = Tuple[Type[SerializerField], KWArgs]
 T = TypeVar('T', bound=Dataclass)
 AnyT = TypeVar('AnyT')
+email = type("email", (str, ), {"__module__": None})
 
 
 # Helper function to strip the empty sentinel value and replace it with the default value from a dataclass
@@ -78,7 +79,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         datetime.timedelta: rest_framework.fields.DurationField,
         uuid.UUID:          rest_framework.fields.UUIDField,
         dict:               rest_framework.fields.DictField,
-        list:               rest_framework.fields.ListField
+        list:               rest_framework.fields.ListField,
+        email:              rest_framework.fields.EmailField
     }
     serializer_related_field = PrimaryKeyRelatedField
 
