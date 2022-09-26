@@ -154,7 +154,7 @@ def is_optional_type(tp: type) -> bool:
     # * a generic
     # * with an origin of typing.Union (typing.Optional[int] reduces to typing.Union[int, None] at constructor time)
     # * with at least one argument that is NoneType
-    # * and at least one argumen that isn't NoneType
+    # * and at least one argument that isn't NoneType
     # except for Literals (sigh), which are just regular Literals with None as an allowed value.
     origin = get_origin(tp)
     args = get_args(tp)
@@ -181,7 +181,11 @@ def get_optional_type(tp: type) -> type:
         # Note that this doesn't remove `None` as a valid choice, but that's not a problem so far.
         return tp
 
-    return next(argument_type for argument_type in get_args(tp) if argument_type is not type(None))
+    remaining_arguments = tuple(arg for arg in get_args(tp) if arg is not type(None))
+    if len(remaining_arguments) == 1:
+        return remaining_arguments[0]
+    else:
+        return get_origin(tp)[remaining_arguments]
 
 
 def is_literal_type(tp: type) -> bool:

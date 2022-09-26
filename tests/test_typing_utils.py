@@ -67,6 +67,7 @@ class TypingTest(unittest.TestCase):
         self.assertTrue(typing_utils.is_optional_type(typing.Union[str, None]))
         self.assertTrue(typing_utils.is_optional_type(typing.Union[str, typing.Optional[str]]))
         self.assertTrue(typing_utils.is_optional_type(typing.Union[str, typing.Union[str, None]]))
+        self.assertTrue(typing_utils.is_optional_type(typing.Union[str, int, None]))
         self.assertFalse(typing_utils.is_optional_type(str))
         self.assertFalse(typing_utils.is_optional_type(int))
         self.assertFalse(typing_utils.is_optional_type(TypingTest))
@@ -76,6 +77,7 @@ class TypingTest(unittest.TestCase):
         self.assertEqual(typing_utils.get_optional_type(typing.Union[None, str]), str)
         self.assertEqual(typing_utils.get_optional_type(typing.Union[str, typing.Optional[str]]), str)
         self.assertEqual(typing_utils.get_optional_type(typing.Union[str, typing.Union[str, None]]), str)
+        self.assertEqual(typing_utils.get_optional_type(typing.Union[str, int, None]), typing.Union[str, int])
 
         with self.assertRaises(ValueError):
             typing_utils.get_optional_type(str)
@@ -85,9 +87,11 @@ class TypingTest(unittest.TestCase):
         # New PEP 604 union syntax in Python 3.10+
         self.assertTrue(typing_utils.is_optional_type(str | None))
         self.assertTrue(typing_utils.is_optional_type(None | str))
+        self.assertTrue(typing_utils.is_optional_type(str | int | None))
 
         self.assertEqual(typing_utils.get_optional_type(str | None), str)
         self.assertEqual(typing_utils.get_optional_type(None | str), str)
+        self.assertEqual(typing_utils.get_optional_type(str | int | None), str | int)
 
         self.assertFalse(typing_utils.is_optional_type(int | str))
 
