@@ -89,6 +89,10 @@ def get_relation_info(type_info: TypeInfo) -> RelationInfo:
 
 
 def lookup_type_in_mapping(mapping: typing.Dict[type, T], key: type) -> T:
+    # Allow all types, including special forms, to be used when they're present in the mapping
+    if key in mapping:
+        return mapping[key]
+
     try:
         # _SpecialForm types like Literal, NoReturn don't have an __mro__ attribute
         bases = inspect.getmro(key)

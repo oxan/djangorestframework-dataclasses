@@ -1,5 +1,13 @@
+1.2.0, TBD
+----------
+Features & fixes:
+
+* Allow all types, including special forms, to be used in ``serializer_field_mapping``.
+
 1.1.1, 25 January 2021
 ----------------------
+Features & fixes:
+
 * Fix usage of PEP 585 generics with forward references (e.g. ``list["str"]``).
 * Fix usage of ``allow_empty`` with ``many=True``.
 
