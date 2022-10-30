@@ -184,6 +184,10 @@ def get_optional_type(tp: type) -> type:
     remaining_arguments = tuple(arg for arg in get_args(tp) if arg is not type(None))
     if len(remaining_arguments) == 1:
         return remaining_arguments[0]
+    elif hasattr(types, 'UnionType') and isinstance(tp, types.UnionType):
+        # The types in the `types` module can't be instantiated in a generic way. Luckily only types.UnionType is
+        # relevant here, so handle it directly.
+        return typing.Union[remaining_arguments]
     else:
         return get_origin(tp)[remaining_arguments]
 
