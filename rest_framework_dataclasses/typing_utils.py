@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Abstract away the runtime introspection on type hints behind an at least mostly-sane interface.
 

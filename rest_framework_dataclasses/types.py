@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Some type definitions that can be useful.
 
 import sys
