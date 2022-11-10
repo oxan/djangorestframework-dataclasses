@@ -24,16 +24,16 @@ import typing
 from .types import Final, Literal
 
 # types.UnionType was added in Python 3.10 for new PEP 604 pipe union syntax
-try:
+if sys.version_info >= (3, 10):
     UNION_TYPES = (typing.Union, types.UnionType)
-except AttributeError:
+else:
     UNION_TYPES = (typing.Union,)
 
-# Wrappers around typing.get_origin() and typing.get_args() for Python 3.7
-try:
+# typing.get_origin() and typing.get_args() were added in Python 3.8
+if sys.version_info >= (3, 8):
     get_origin = typing.get_origin
     get_args = typing.get_args
-except AttributeError:
+else:
     # This is only for Python 3.7, so we don't have to worry about typing._BaseGenericAlias
     def get_origin(tp: type) -> type:
         return tp.__origin__ if isinstance(tp, typing._GenericAlias) else None

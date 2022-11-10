@@ -1,11 +1,12 @@
 # Some type definitions that can be useful.
 
+import sys
+
 from typing import ClassVar, Dict, Union
 
-try:
-    # Python 3.8 and later
+if sys.version_info >= (3, 8):
     from typing import Final, Literal, Protocol
-except ImportError:
+else:
     from typing_extensions import Final, Literal, Protocol
 
 
