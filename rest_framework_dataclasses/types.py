@@ -2,7 +2,7 @@
 
 import sys
 
-from typing import ClassVar, Dict, Union
+from typing import Any, ClassVar, Dict, Union
 
 # Alias these types in this module for ease of use elsewhere.
 if sys.version_info >= (3, 8):
@@ -16,9 +16,11 @@ else:
 # with both older and newer versions. For reference, see https://stackoverflow.com/a/55240861 and
 # https://github.com/python/mypy/issues/14029.
 class NewStyleDataclassProtocol(Protocol):
-    __dataclass_fields__: ClassVar[dict]
+    __dataclass_fields__: ClassVar[Dict[str, Any]]
+
 
 class OldStyleDataclassProtocol(Protocol):
-    __dataclass_fields__: dict
+    __dataclass_fields__: Dict[str, Any]
+
 
 Dataclass = Union[OldStyleDataclassProtocol, NewStyleDataclassProtocol]

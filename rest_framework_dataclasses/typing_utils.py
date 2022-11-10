@@ -16,7 +16,7 @@ Requirements for this module:
 Note that there was some promising development in the `typing_inspect` module, but it is still marked experimental and
 development seems to have stalled. Maybe in the future?
 """
-import collections
+import collections.abc
 import sys
 import types
 import typing

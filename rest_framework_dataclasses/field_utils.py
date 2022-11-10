@@ -1,21 +1,22 @@
 import dataclasses
 import inspect
-import typing
+
+from typing import Any, Dict, Generic, Mapping, Type, TypeVar
 
 from rest_framework.utils.model_meta import RelationInfo
 
 from rest_framework_dataclasses import typing_utils
 from rest_framework_dataclasses.types import Dataclass
 
-TDataclass = typing.TypeVar('TDataclass', bound=Dataclass)
-T = typing.TypeVar('T')
+T = TypeVar('T', bound=Dataclass)
+AnyT = TypeVar('AnyT')
 
 
 @dataclasses.dataclass
-class DataclassDefinition(typing.Generic[T]):
-    dataclass_type: typing.Type[T]
-    fields: typing.Dict[str, dataclasses.Field[typing.Any]]
-    field_types: typing.Dict[str, type]
+class DataclassDefinition(Generic[T]):
+    dataclass_type: Type[T]
+    fields: Dict[str, dataclasses.Field[Any]]
+    field_types: Dict[str, type]
 
 
 @dataclasses.dataclass
@@ -27,7 +28,7 @@ class TypeInfo:
     base_type: type
 
 
-def get_dataclass_definition(dataclass_type: typing.Type[T]) -> DataclassDefinition[T]:
+def get_dataclass_definition(dataclass_type: Type[T]) -> DataclassDefinition[T]:
     """
     Given a dataclass class, returns a dictionary mapping field names to
     `dataclasses.Field` instances describing all fields on the dataclass.
@@ -48,7 +49,7 @@ def get_type_info(tp: type) -> TypeInfo:
     is_final = typing_utils.is_final_type(tp)
     if is_final:
         tp = typing_utils.get_final_type(tp)
-        if tp is typing.Any:
+        if tp is Any:
             # This used to be supported, but Python 3.10 raises in get_type_hints() if it encounters a plain Final hint.
             raise TypeError('Plain typing.Final is not valid as a type argument.')
 
@@ -87,7 +88,7 @@ def get_relation_info(type_info: TypeInfo) -> RelationInfo:
     )
 
 
-def lookup_type_in_mapping(mapping: typing.Mapping[type, T], key: type) -> T:
+def lookup_type_in_mapping(mapping: Mapping[type, AnyT], key: type) -> AnyT:
     # Allow all types, including special forms, to be used when they're present in the mapping
     if key in mapping:
         return mapping[key]
