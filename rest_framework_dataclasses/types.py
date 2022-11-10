@@ -1,6 +1,6 @@
 # Some type definitions that can be useful.
 
-from typing import Dict
+from typing import Dict, ClassVar, Union
 
 try:
     # Python 3.8 and later
@@ -9,6 +9,12 @@ except ImportError:
     from typing_extensions import Final, Literal, Protocol
 
 
-# Note that this doesn't actually work yet (https://stackoverflow.com/a/55240861)
-class Dataclass(Protocol):
+# for mypy 0.990+
+class NewStyleDataclassProtocol(Protocol):
+    __dataclass_fields__: ClassVar[Dict]
+
+# for mypy <0.990
+class OldStyleDataclassProtocol(Protocol):
     __dataclass_fields__: Dict
+
+Dataclass = Union[OldStyleDataclassProtocol, NewStyleDataclassProtocol]
