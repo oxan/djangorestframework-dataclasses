@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-# Some type definitions that can be useful.
-
 import sys
-
 from typing import Any, ClassVar, Dict, Union
 
-# Alias these types in this module for ease of use elsewhere.
+# Alias these types into this module for ease of use elsewhere.
 if sys.version_info >= (3, 8):
     from typing import Final, Literal, Protocol
 else:
