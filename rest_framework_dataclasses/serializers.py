@@ -7,7 +7,7 @@ import decimal
 import uuid
 from collections import OrderedDict
 from enum import Enum
-from typing import cast, Any, Dict, Generic, Iterable, Mapping, Optional, Tuple, Type, TypeVar
+from typing import cast, Any, Dict, Generic, Iterable, List, Mapping, Optional, Tuple, Type, TypeVar
 
 import rest_framework.fields
 import rest_framework.serializers
@@ -99,13 +99,13 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
     # Override constructor to allow "anonymous" usage by passing the dataclass type and extra kwargs as a constructor
     # parameter instead of via a Meta class.
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         self.dataclass = kwargs.pop('dataclass', None)
         self.extra_kwargs = kwargs.pop('extra_kwargs', None)
         super(DataclassSerializer, self).__init__(*args, **kwargs)
 
     @classmethod
-    def many_init(cls, *args, **kwargs):
+    def many_init(cls, *args: Any, **kwargs: Any) -> DataclassListSerializer[T]:
         """
         Implements the creation of a `DataclassListSerializer` parent class when `many=True` is used.
         """
@@ -614,7 +614,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         return cast(T, instance)
 
     @cached_property
-    def validated_data(self):
+    def validated_data(self) -> T:
         """
         Replace empty sentinel value with default value in public representation. Note that this doesn't work for
         partial updates.
@@ -623,9 +623,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         return _strip_empty_sentinels(internal_validated_data)
 
 
-class DataclassListSerializer(rest_framework.serializers.ListSerializer):
+class DataclassListSerializer(rest_framework.serializers.ListSerializer, Generic[T]):
     @cached_property
-    def validated_data(self):
+    def validated_data(self) -> List[T]:
         """
         Replace empty sentinel value with default value in public representation.
         """
@@ -633,9 +633,9 @@ class DataclassListSerializer(rest_framework.serializers.ListSerializer):
         return _strip_empty_sentinels(internal_validated_data)
 
 
-class HyperlinkedDataclassSerializer(DataclassSerializer):
+class HyperlinkedDataclassSerializer(DataclassSerializer, Generic[T]):
     serializer_related_field = HyperlinkedRelatedField
 
     @property
-    def serializer_dataclass_field(self):
+    def serializer_dataclass_field(self) -> Type[SerializerField]:
         return HyperlinkedDataclassSerializer
