@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "djangorestframework-dataclasses"
-version = "1.1.1"
+version = "1.2.0"
 description = "A dataclasses serializer for Django REST Framework"
 readme = "README.rst"
 license = { file = "LICENSE" }

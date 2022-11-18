@@ -1,8 +1,12 @@
-1.2.0, TBD
-----------
+1.2.0, 18 November 2022
+-----------------------
 Features & fixes:
 
-* Allow all types, including special forms, to be used in ``serializer_field_mapping``.
+* Allow all types, including special forms such as unions, to have their field type overridden through the
+  ``serializer_field_mapping`` dictionary.
+* Also treat unions containing ``None`` as optional if they consist of three or more members. Previously this was only
+  the case for unions with two members (i.e. only unions of a type with ``None`` were optional).
+* Many added and fixed type hints.
 
 1.1.1, 25 January 2021
 ----------------------
