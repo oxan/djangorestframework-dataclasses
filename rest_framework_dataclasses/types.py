@@ -1,11 +1,12 @@
-# Some type definitions that can be useful.
+from __future__ import annotations
 
-from typing import ClassVar, Dict, Union
+import sys
+from typing import Any, ClassVar, Dict, Union
 
-try:
-    # Python 3.8 and later
+# Alias these types into this module for ease of use elsewhere.
+if sys.version_info >= (3, 8):
     from typing import Final, Literal, Protocol
-except ImportError:
+else:
     from typing_extensions import Final, Literal, Protocol
 
 
@@ -14,9 +15,11 @@ except ImportError:
 # with both older and newer versions. For reference, see https://stackoverflow.com/a/55240861 and
 # https://github.com/python/mypy/issues/14029.
 class NewStyleDataclassProtocol(Protocol):
-    __dataclass_fields__: ClassVar[dict]
+    __dataclass_fields__: ClassVar[Dict[str, Any]]
+
 
 class OldStyleDataclassProtocol(Protocol):
-    __dataclass_fields__: dict
+    __dataclass_fields__: Dict[str, Any]
+
 
 Dataclass = Union[OldStyleDataclassProtocol, NewStyleDataclassProtocol]

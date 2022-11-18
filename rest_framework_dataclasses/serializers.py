@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import dataclasses
 import datetime
@@ -5,7 +7,7 @@ import decimal
 import uuid
 from collections import OrderedDict
 from enum import Enum
-from typing import Any, Dict, Generic, Iterable, Mapping, Tuple, Type, TypeVar
+from typing import cast, Any, Dict, Generic, Iterable, List, Mapping, Optional, Tuple, Type, TypeVar
 
 import rest_framework.fields
 import rest_framework.serializers
@@ -30,7 +32,7 @@ AnyT = TypeVar('AnyT')
 
 
 # Helper function to strip the empty sentinel value and replace it with the default value from a dataclass
-def _strip_empty_sentinels(data: AnyT, instance: AnyT = None) -> AnyT:
+def _strip_empty_sentinels(data: AnyT, instance: Optional[AnyT] = None) -> AnyT:
     if dataclasses.is_dataclass(data) and not isinstance(data, type):
         values = {field.name: _strip_empty_sentinels(getattr(data, field.name),
                                                      getattr(instance, field.name, None))
@@ -43,9 +45,9 @@ def _strip_empty_sentinels(data: AnyT, instance: AnyT = None) -> AnyT:
         else:
             return type(data)(**values)
     elif isinstance(data, list):
-        return [_strip_empty_sentinels(item) for item in data]
+        return cast(AnyT, [_strip_empty_sentinels(item) for item in data])
     elif isinstance(data, dict):
-        return {key: _strip_empty_sentinels(value) for key, value in data.items()}
+        return cast(AnyT, {key: _strip_empty_sentinels(value) for key, value in data.items()})
     return data
 
 
@@ -66,7 +68,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
     """
 
     # The mapping of field types to serializer fields
-    serializer_field_mapping = {
+    serializer_field_mapping: Mapping[type, Type[SerializerField]] = {
         int:                rest_framework.fields.IntegerField,
         float:              rest_framework.fields.FloatField,
         bool:               rest_framework.fields.BooleanField,
@@ -80,26 +82,30 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         dict:               rest_framework.fields.DictField,
         list:               rest_framework.fields.ListField
     }
-    serializer_related_field = PrimaryKeyRelatedField
+    serializer_related_field: Type[SerializerField] = PrimaryKeyRelatedField
 
     # Unfortunately this cannot be an actual field as Python processes the class before it defines the class, but this
     # comes close enough.
     @property
-    def serializer_dataclass_field(self):
+    def serializer_dataclass_field(self) -> Type[SerializerField]:
         return DataclassSerializer
 
-    # Type hints
-    _declared_fields: Mapping[str, SerializerField]
+    # Type hints for fields on the parent class
+    _declared_fields: Dict[str, SerializerField]
+    _validated_data: T
+
+    # Type hints for fields
+    dataclass: Type[T]
 
     # Override constructor to allow "anonymous" usage by passing the dataclass type and extra kwargs as a constructor
     # parameter instead of via a Meta class.
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         self.dataclass = kwargs.pop('dataclass', None)
         self.extra_kwargs = kwargs.pop('extra_kwargs', None)
         super(DataclassSerializer, self).__init__(*args, **kwargs)
 
     @classmethod
-    def many_init(cls, *args, **kwargs):
+    def many_init(cls, *args: Any, **kwargs: Any) -> DataclassListSerializer[T]:
         """
         Implements the creation of a `DataclassListSerializer` parent class when `many=True` is used.
         """
@@ -119,7 +125,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
     # Parse and validate the configuration to a more usable format
 
     @cached_property
-    def dataclass_definition(self) -> DataclassDefinition:
+    def dataclass_definition(self) -> DataclassDefinition[T]:
         # Determine the dataclass that we should operate on.
         if self.dataclass:
             assert not hasattr(self, 'Meta'), (
@@ -159,7 +165,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
     def update(self, instance: T, validated_data: T) -> T:
         return _strip_empty_sentinels(validated_data, instance)
 
-    def save(self, **kwargs) -> T:
+    def save(self, **kwargs: KWArgs) -> T:
         assert hasattr(self, '_errors'), (
             "You must call `.is_valid()` before calling `.save()`."
         )
@@ -418,7 +424,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             field_class = self.serializer_field_mapping[list]
 
         # If the base type is not specified or is any type, we don't have to bother creating the child field.
-        if type_info.base_type is None:
+        if type_info.base_type is Any:
             return field_class, {}
 
         # Recurse to build the child field (i.e. the field of every instance). We pass the extra kwargs that are
@@ -442,7 +448,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         """
         try:
             field_class = field_utils.lookup_type_in_mapping(self.serializer_field_mapping, type_info.base_type)
-            field_kwargs = {}
+            field_kwargs: KWArgs = {}
 
             return field_class, field_kwargs
         except KeyError:
@@ -518,7 +524,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         Create a read only field for dataclass methods and properties.
         """
         field_class = rest_framework.fields.ReadOnlyField
-        field_kwargs = {}
+        field_kwargs: KWArgs = {}
 
         return field_class, field_kwargs
 
@@ -605,10 +611,10 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         dataclass_type = self.dataclass_definition.dataclass_type
         instance = dataclass_type(**native_values, **empty_values)
 
-        return instance
+        return cast(T, instance)
 
     @cached_property
-    def validated_data(self):
+    def validated_data(self) -> T:
         """
         Replace empty sentinel value with default value in public representation. Note that this doesn't work for
         partial updates.
@@ -617,9 +623,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         return _strip_empty_sentinels(internal_validated_data)
 
 
-class DataclassListSerializer(rest_framework.serializers.ListSerializer):
+class DataclassListSerializer(rest_framework.serializers.ListSerializer, Generic[T]):
     @cached_property
-    def validated_data(self):
+    def validated_data(self) -> List[T]:
         """
         Replace empty sentinel value with default value in public representation.
         """
@@ -627,9 +633,9 @@ class DataclassListSerializer(rest_framework.serializers.ListSerializer):
         return _strip_empty_sentinels(internal_validated_data)
 
 
-class HyperlinkedDataclassSerializer(DataclassSerializer):
+class HyperlinkedDataclassSerializer(DataclassSerializer, Generic[T]):
     serializer_related_field = HyperlinkedRelatedField
 
     @property
-    def serializer_dataclass_field(self):
+    def serializer_dataclass_field(self) -> Type[SerializerField]:
         return HyperlinkedDataclassSerializer

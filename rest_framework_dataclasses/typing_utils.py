@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Abstract away the runtime introspection on type hints behind an at least mostly-sane interface.
 
@@ -16,7 +18,7 @@ Requirements for this module:
 Note that there was some promising development in the `typing_inspect` module, but it is still marked experimental and
 development seems to have stalled. Maybe in the future?
 """
-import collections
+import collections.abc
 import sys
 import types
 import typing
@@ -24,21 +26,21 @@ import typing
 from .types import Final, Literal
 
 # types.UnionType was added in Python 3.10 for new PEP 604 pipe union syntax
-try:
+if sys.version_info >= (3, 10):
     UNION_TYPES = (typing.Union, types.UnionType)
-except AttributeError:
+else:
     UNION_TYPES = (typing.Union,)
 
-# Wrappers around typing.get_origin() and typing.get_args() for Python 3.7
-try:
+# typing.get_origin() and typing.get_args() were added in Python 3.8
+if sys.version_info >= (3, 8):
     get_origin = typing.get_origin
     get_args = typing.get_args
-except AttributeError:
+else:
     # This is only for Python 3.7, so we don't have to worry about typing._BaseGenericAlias
     def get_origin(tp: type) -> type:
         return tp.__origin__ if isinstance(tp, typing._GenericAlias) else None
 
-    def get_args(tp: type) -> type:
+    def get_args(tp: type) -> typing.Tuple:
         return tp.__args__ if isinstance(tp, typing._GenericAlias) else ()
 
 # Some implementation notes:
@@ -68,7 +70,7 @@ def get_resolved_type_hints(tp: type) -> typing.Dict[str, type]:
             return resolve_type
 
         args = tuple(_resolve_type(context_type, arg) for arg in resolve_type.__args__)
-        return types.GenericAlias(resolve_type.__origin__, args)
+        return typing.cast(type, types.GenericAlias(resolve_type.__origin__, args))
 
     return {k: _resolve_type_hint(tp, v) for k, v in typing.get_type_hints(tp).items()}
 
@@ -187,9 +189,9 @@ def get_optional_type(tp: type) -> type:
     elif hasattr(types, 'UnionType') and isinstance(tp, types.UnionType):
         # The types in the `types` module can't be instantiated in a generic way. Luckily only types.UnionType is
         # relevant here, so handle it directly.
-        return typing.Union[remaining_arguments]
+        return typing.Union[remaining_arguments]  # type: ignore
     else:
-        return get_origin(tp)[remaining_arguments]
+        return get_origin(tp)[remaining_arguments]  # type: ignore
 
 
 def is_literal_type(tp: type) -> bool:
@@ -245,12 +247,14 @@ def is_type_variable(tp: type) -> bool:
     return isinstance(tp, typing.TypeVar)
 
 
-def get_variable_type_substitute(tp: typing.TypeVar) -> type:
+def get_variable_type_substitute(tp: type) -> type:
     """
     Get the substitute for a variable type.
     """
+    assert isinstance(tp, typing.TypeVar)
+
     if len(tp.__constraints__) > 0:
-        return typing.Union[tp.__constraints__]
+        return typing.Union[tp.__constraints__]  # type: ignore
     if tp.__bound__ is not None:
         return tp.__bound__
-    return typing.Any
+    return typing.Any  # type: ignore

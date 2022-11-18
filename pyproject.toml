@@ -50,3 +50,13 @@ sponsor = "https://github.com/sponsors/oxan"
 [tool.coverage.run]
 branch = true
 source = ["rest_framework_dataclasses"]
+
+[tool.mypy]
+packages = ["rest_framework_dataclasses"]
+plugins = [
+    "mypy_django_plugin.main",
+    "mypy_drf_plugin.main",
+]
+
+[tool.django-stubs]
+django_settings_module = "tests.django_settings"
