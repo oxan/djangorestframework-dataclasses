@@ -1,4 +1,4 @@
-from rest_framework.fields import DecimalField, ChoiceField
+from rest_framework.fields import DecimalField, ChoiceField, DictField, ListField
 
 
 class DefaultDecimalField(DecimalField):
@@ -42,3 +42,21 @@ class EnumField(ChoiceField):
             return value.name
         else:
             return value.value
+
+
+class IterableField(ListField):
+    def __init__(self, **kwargs):
+        self.container = kwargs.pop('container', list)
+        super(IterableField, self).__init__(**kwargs)
+
+    def to_internal_value(self, value):
+        return self.container(super(IterableField, self).to_internal_value(value))
+
+
+class MappingField(DictField):
+    def __init__(self, **kwargs):
+        self.container = kwargs.pop('container', dict)
+        super(MappingField, self).__init__(**kwargs)
+
+    def to_internal_value(self, value):
+        return self.container(super(MappingField, self).to_internal_value(value))

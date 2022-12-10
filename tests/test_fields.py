@@ -1,10 +1,11 @@
+import collections
 import enum
 
 from unittest import TestCase
 
 from rest_framework.exceptions import ValidationError
 
-from rest_framework_dataclasses.fields import DefaultDecimalField, EnumField
+from rest_framework_dataclasses.fields import DefaultDecimalField, EnumField, IterableField, MappingField
 
 
 class FieldTest(TestCase):
@@ -44,3 +45,18 @@ class FieldTest(TestCase):
         # check explicit specification of options
         field = EnumField(Color, choices=[('FF0000', 'RED'), ('00FF00', 'GREEN')])
         self.assertEqual(len(field.choices), 2)
+
+    def test_iterable_field(self):
+        default_field = IterableField()
+        self.assertEqual(default_field.to_internal_value(['foo', 'bar']), ['foo', 'bar'])
+
+        set_field = IterableField(container=set)
+        self.assertEqual(set_field.to_internal_value(['foo', 'bar', 'baz']), {'foo', 'bar', 'baz'})
+
+    def test_mapping_field(self):
+        default_field = MappingField()
+        self.assertEqual(default_field.to_internal_value({'foo': 'bar'}), {'foo': 'bar'})
+
+        ordered_field = MappingField(container=collections.OrderedDict)
+        ordered_values = {'foo': 'bar', 'abc': 'def'}
+        self.assertEqual(ordered_field.to_internal_value(ordered_values), collections.OrderedDict(ordered_values))

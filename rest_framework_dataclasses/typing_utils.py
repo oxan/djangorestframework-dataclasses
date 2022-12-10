@@ -100,6 +100,20 @@ def is_iterable_type(tp: type) -> bool:
     )
 
 
+def get_container_type(tp: type) -> typing.Optional[type]:
+    """
+    Return the unsubscripted container type of the given type.
+
+    Some examples of container types are:
+
+        Iterable[str] -> Iterable
+        List[str] -> list
+        Dict[str, int] -> dict
+
+    """
+    return get_origin(tp)
+
+
 def get_iterable_element_type(tp: type) -> type:
     """
     Get the type of elements in an iterable.
