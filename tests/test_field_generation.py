@@ -1,3 +1,4 @@
+import collections
 import dataclasses
 import datetime
 import decimal
@@ -33,6 +34,8 @@ class FieldsTest(unittest.TestCase):
         self.assertEqual(field_class, serializer_field)
 
         if serializer_kwargs is not None:
+            if 'child' in field_kwargs:
+                field_kwargs['child'] = type(field_kwargs['child'])
             self.assertDictEqual(field_kwargs, serializer_kwargs, f'arguments for field of type {type_hint}')
 
     def check_field(self, type_hint, field, kwargs=None):
@@ -55,24 +58,26 @@ class FieldsTest(unittest.TestCase):
     def test_composite(self):
         var_type = typing.TypeVar('var_type')
 
-        self.check_field(typing.Iterable[str], fields.ListField)
-        self.check_field(typing.Sequence[str], fields.ListField)
-        self.check_field(typing.Tuple[str], fields.ListField)
-        self.check_field(typing.List[str], fields.ListField)
+        self.check_field(typing.Iterable[str], fields.ListField, {'child': fields.CharField})
+        self.check_field(typing.Sequence[str], fields.ListField, {'child': fields.CharField})
+        self.check_field(typing.Tuple[str], fields.ListField, {'child': fields.CharField})
+        self.check_field(typing.List[str], fields.ListField, {'child': fields.CharField})
         self.check_field(typing.List[typing.Any], fields.ListField, {})
         self.check_field(typing.List[var_type], fields.ListField, {})
         self.check_field(typing.List, fields.ListField, {})
         self.check_field(list, fields.ListField, {})
 
-        self.check_field(typing.Mapping[str, int], fields.DictField)
-        self.check_field(typing.Dict[str, int], fields.DictField)
+        self.check_field(typing.Mapping[str, int], fields.DictField, {'child': fields.IntegerField})
+        self.check_field(typing.Dict[str, int], fields.DictField, {'child': fields.IntegerField})
         self.check_field(typing.Dict[str, typing.Any], fields.DictField, {})
         self.check_field(typing.Dict[str, var_type], fields.DictField, {})
         self.check_field(typing.Dict, fields.DictField, {})
         self.check_field(dict, fields.DictField, {})
 
-        self.check_field(typing.Optional[typing.List[str]], fields.ListField)
-        self.check_field(typing.Optional[typing.Dict[str, int]], fields.DictField)
+        self.check_field(typing.Optional[typing.List[str]], fields.ListField,
+                         {'allow_null': True, 'child': fields.CharField})
+        self.check_field(typing.Optional[typing.Dict[str, int]], fields.DictField,
+                         {'allow_null': True, 'child': fields.IntegerField})
 
         # check that kwargs generated for the child field are actually applied
         _, list_kwargs = self.build_typed_field(typing.List[typing.Optional[str]])
@@ -92,14 +97,14 @@ class FieldsTest(unittest.TestCase):
 
     @unittest.skipIf(sys.version_info < (3, 9, 0), 'Python 3.9 required')
     def test_composite_pep585(self):
-        self.check_field(abc.Iterable[str], fields.ListField)
-        self.check_field(abc.Sequence[str], fields.ListField)
-        self.check_field(tuple[str], fields.ListField)
-        self.check_field(list[str], fields.ListField)
+        self.check_field(abc.Iterable[str], fields.ListField, {'child': fields.CharField})
+        self.check_field(abc.Sequence[str], fields.ListField, {'child': fields.CharField})
+        self.check_field(tuple[str], fields.ListField, {'child': fields.CharField})
+        self.check_field(list[str], fields.ListField, {'child': fields.CharField})
         self.check_field(list[typing.Any], fields.ListField, {})
 
-        self.check_field(abc.Mapping[str, int], fields.DictField)
-        self.check_field(dict[str, int], fields.DictField)
+        self.check_field(abc.Mapping[str, int], fields.DictField, {'child': fields.IntegerField})
+        self.check_field(dict[str, int], fields.DictField, {'child': fields.IntegerField})
         self.check_field(dict[str, typing.Any], fields.DictField, {})
 
         # check that kwargs generated for the child field are actually applied
