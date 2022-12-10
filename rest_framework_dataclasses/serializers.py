@@ -417,16 +417,21 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         """
         Create a composite (mapping or list) field.
         """
-        # Lookup the types from the field mapping, so that it can easily be changed without overriding the method.
+        # Default to using the field for a dict or list from the field mapping, so that it can easily be changed without
+        # overriding this method.
         if type_info.is_mapping:
             field_class = self.serializer_field_mapping[dict]
         else:
             field_class = self.serializer_field_mapping[list]
-
-        # If the type of the container is known, pass it to the field.
         field_kwargs: KWArgs = {}
+
+        # If the type of the container is known, see if there's a field override; and pass it to the field.
         if type_info.container_type:
             field_kwargs['container'] = type_info.container_type
+            try:
+                field_class = field_utils.lookup_type_in_mapping(self.serializer_field_mapping, type_info.container_type)
+            except KeyError:
+                pass
 
         # If the base type is not specified or is any type, no need to bother creating the child field.
         if type_info.base_type is Any:
