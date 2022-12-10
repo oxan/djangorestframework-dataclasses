@@ -153,6 +153,11 @@ class FieldsTest(unittest.TestCase):
         self.check_field(Person, relations.PrimaryKeyRelatedField,
                          {'queryset': Person._default_manager})
 
+        # test changing serializer_related_field, and a hyperlinked field which triggers a different code path
+        DataclassSerializer.serializer_related_field = relations.HyperlinkedRelatedField
+        self.check_field(Person, relations.HyperlinkedRelatedField,
+                         {'queryset': Person._default_manager, 'view_name': 'person-detail'})
+
     def test_literal(self):
         self.check_field(Literal['a', 'b'], fields.ChoiceField,
                          {'choices': ['a', 'b'], 'allow_blank': False})
