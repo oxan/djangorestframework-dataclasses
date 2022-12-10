@@ -42,10 +42,10 @@ dependencies = [
 ]
 
 [project.urls]
-repository = "https://github.com/oxan/djangorestframework-dataclasses"
-documentation = "https://github.com/oxan/djangorestframework-dataclasses/blob/master/README.rst"
-changelog = "https://github.com/oxan/djangorestframework-dataclasses/blob/master/CHANGELOG.rst"
-sponsor = "https://github.com/sponsors/oxan"
+Repository = "https://github.com/oxan/djangorestframework-dataclasses"
+Documentation = "https://github.com/oxan/djangorestframework-dataclasses/blob/master/README.rst"
+Changelog = "https://github.com/oxan/djangorestframework-dataclasses/blob/master/CHANGELOG.rst"
+Sponsor = "https://github.com/sponsors/oxan"
 
 [tool.coverage.run]
 branch = true
