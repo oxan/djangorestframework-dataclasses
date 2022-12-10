@@ -30,7 +30,7 @@ class FieldsTest(unittest.TestCase):
 
     def check_field_additional(self, type_hint, field, serializer_field, serializer_kwargs=None):
         field_class, field_kwargs = self.build_typed_field(type_hint, field)
-        self.assertTrue(field_class == serializer_field)
+        self.assertEqual(field_class, serializer_field)
 
         if serializer_kwargs is not None:
             self.assertDictEqual(field_kwargs, serializer_kwargs, f'arguments for field of type {type_hint}')
