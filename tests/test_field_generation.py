@@ -58,26 +58,31 @@ class FieldsTest(unittest.TestCase):
     def test_composite(self):
         var_type = typing.TypeVar('var_type')
 
-        self.check_field(typing.Iterable[str], fields.ListField, {'child': fields.CharField})
-        self.check_field(typing.Sequence[str], fields.ListField, {'child': fields.CharField})
-        self.check_field(typing.Tuple[str], fields.ListField, {'child': fields.CharField})
-        self.check_field(typing.List[str], fields.ListField, {'child': fields.CharField})
-        self.check_field(typing.List[typing.Any], fields.ListField, {})
-        self.check_field(typing.List[var_type], fields.ListField, {})
-        self.check_field(typing.List, fields.ListField, {})
-        self.check_field(list, fields.ListField, {})
+        self.check_field(typing.Iterable[str], custom_fields.IterableField, {'child': fields.CharField})
+        self.check_field(typing.Sequence[str], custom_fields.IterableField, {'child': fields.CharField})
+        self.check_field(typing.Tuple[str], custom_fields.IterableField,
+                         {'child': fields.CharField, 'container': tuple})
+        self.check_field(typing.Set[str], custom_fields.IterableField, {'child': fields.CharField, 'container': set})
+        self.check_field(typing.List[str], custom_fields.IterableField, {'child': fields.CharField, 'container': list})
+        self.check_field(typing.List[typing.Any], custom_fields.IterableField, {'container': list})
+        self.check_field(typing.List[var_type], custom_fields.IterableField, {'container': list})
+        self.check_field(typing.List, custom_fields.IterableField, {'container': list})
+        self.check_field(list, custom_fields.IterableField, {})
 
-        self.check_field(typing.Mapping[str, int], fields.DictField, {'child': fields.IntegerField})
-        self.check_field(typing.Dict[str, int], fields.DictField, {'child': fields.IntegerField})
-        self.check_field(typing.Dict[str, typing.Any], fields.DictField, {})
-        self.check_field(typing.Dict[str, var_type], fields.DictField, {})
-        self.check_field(typing.Dict, fields.DictField, {})
-        self.check_field(dict, fields.DictField, {})
+        self.check_field(typing.Mapping[str, int], custom_fields.MappingField, {'child': fields.IntegerField})
+        self.check_field(typing.OrderedDict[str, int], custom_fields.MappingField,
+                         {'child': fields.IntegerField, 'container': collections.OrderedDict})
+        self.check_field(typing.Dict[str, int], custom_fields.MappingField,
+                         {'child': fields.IntegerField, 'container': dict})
+        self.check_field(typing.Dict[str, typing.Any], custom_fields.MappingField, {'container': dict})
+        self.check_field(typing.Dict[str, var_type], custom_fields.MappingField, {'container': dict})
+        self.check_field(typing.Dict, custom_fields.MappingField, {'container': dict})
+        self.check_field(dict, custom_fields.MappingField, {})
 
-        self.check_field(typing.Optional[typing.List[str]], fields.ListField,
-                         {'allow_null': True, 'child': fields.CharField})
-        self.check_field(typing.Optional[typing.Dict[str, int]], fields.DictField,
-                         {'allow_null': True, 'child': fields.IntegerField})
+        self.check_field(typing.Optional[typing.List[str]], custom_fields.IterableField,
+                         {'allow_null': True, 'child': fields.CharField, 'container': list})
+        self.check_field(typing.Optional[typing.Dict[str, int]], custom_fields.MappingField,
+                         {'allow_null': True, 'child': fields.IntegerField, 'container': dict})
 
         # check that kwargs generated for the child field are actually applied
         _, list_kwargs = self.build_typed_field(typing.List[typing.Optional[str]])
@@ -97,15 +102,18 @@ class FieldsTest(unittest.TestCase):
 
     @unittest.skipIf(sys.version_info < (3, 9, 0), 'Python 3.9 required')
     def test_composite_pep585(self):
-        self.check_field(abc.Iterable[str], fields.ListField, {'child': fields.CharField})
-        self.check_field(abc.Sequence[str], fields.ListField, {'child': fields.CharField})
-        self.check_field(tuple[str], fields.ListField, {'child': fields.CharField})
-        self.check_field(list[str], fields.ListField, {'child': fields.CharField})
-        self.check_field(list[typing.Any], fields.ListField, {})
+        self.check_field(abc.Iterable[str], custom_fields.IterableField, {'child': fields.CharField})
+        self.check_field(abc.Sequence[str], custom_fields.IterableField, {'child': fields.CharField})
+        self.check_field(tuple[str], custom_fields.IterableField, {'child': fields.CharField, 'container': tuple})
+        self.check_field(set[str], custom_fields.IterableField, {'child': fields.CharField, 'container': set})
+        self.check_field(list[str], custom_fields.IterableField, {'child': fields.CharField, 'container': list})
+        self.check_field(list[typing.Any], custom_fields.IterableField, {'container': list})
 
-        self.check_field(abc.Mapping[str, int], fields.DictField, {'child': fields.IntegerField})
-        self.check_field(dict[str, int], fields.DictField, {'child': fields.IntegerField})
-        self.check_field(dict[str, typing.Any], fields.DictField, {})
+        self.check_field(abc.Mapping[str, int], custom_fields.MappingField, {'child': fields.IntegerField})
+        self.check_field(collections.OrderedDict[str, int], custom_fields.MappingField,
+                         {'child': fields.IntegerField, 'container': collections.OrderedDict})
+        self.check_field(dict[str, int], custom_fields.MappingField, {'child': fields.IntegerField, 'container': dict})
+        self.check_field(dict[str, typing.Any], custom_fields.MappingField, {'container': dict})
 
         # check that kwargs generated for the child field are actually applied
         _, list_kwargs = self.build_typed_field(list[typing.Optional[str]])
@@ -119,8 +127,10 @@ class FieldsTest(unittest.TestCase):
 
     @unittest.skipIf(sys.version_info < (3, 10, 0), 'Python 3.10 required')
     def test_composite_pep604(self):
-        self.check_field(typing.List[str] | None, fields.ListField)
-        self.check_field(typing.Dict[str, int] | None, fields.DictField)
+        self.check_field(typing.List[str] | None, custom_fields.IterableField,
+                         {'child': fields.CharField, 'allow_null': True, 'container': list})
+        self.check_field(typing.Dict[str, int] | None, custom_fields.MappingField,
+                         {'child': fields.IntegerField, 'allow_null': True, 'container': dict})
 
     def test_nested(self):
         refclass = dataclasses.make_dataclass('ReferencedDataclass', [])

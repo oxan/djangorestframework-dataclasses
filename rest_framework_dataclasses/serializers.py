@@ -79,8 +79,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         datetime.time:      rest_framework.fields.TimeField,
         datetime.timedelta: rest_framework.fields.DurationField,
         uuid.UUID:          rest_framework.fields.UUIDField,
-        dict:               rest_framework.fields.DictField,
-        list:               rest_framework.fields.ListField
+        list:               fields.IterableField,
+        dict:               fields.MappingField,
     }
     serializer_related_field: Type[SerializerField] = PrimaryKeyRelatedField
 
@@ -423,9 +423,14 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         else:
             field_class = self.serializer_field_mapping[list]
 
-        # If the base type is not specified or is any type, we don't have to bother creating the child field.
+        # If the type of the container is known, pass it to the field.
+        field_kwargs: KWArgs = {}
+        if type_info.container_type:
+            field_kwargs['container'] = type_info.container_type
+
+        # If the base type is not specified or is any type, no need to bother creating the child field.
         if type_info.base_type is Any:
-            return field_class, {}
+            return field_class, field_kwargs
 
         # Recurse to build the child field (i.e. the field of every instance). We pass the extra kwargs that are
         # specified for the child field through, so these can be used to recursively specify kwargs for child fields.
@@ -439,7 +444,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
         # Create child field and initialize parent field kwargs
         child_field = child_field_class(**child_field_kwargs)
-        field_kwargs = {'child': child_field}
+        field_kwargs['child'] = child_field
         return field_class, field_kwargs
 
     def build_standard_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:

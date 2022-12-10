@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 import inspect
 
-from typing import Any, Dict, Generic, Mapping, Type, TypeVar
+from typing import Any, Dict, Generic, Mapping, Optional, Type, TypeVar
 
 from rest_framework.utils.model_meta import RelationInfo
 
@@ -28,6 +28,7 @@ class TypeInfo:
     is_final: bool
     is_nullable: bool
     base_type: type
+    container_type: Optional[type]
 
 
 def get_dataclass_definition(dataclass_type: Type[T]) -> DataclassDefinition[T]:
@@ -62,6 +63,12 @@ def get_type_info(tp: type) -> TypeInfo:
     is_mapping = typing_utils.is_mapping_type(tp)
     is_many = typing_utils.is_iterable_type(tp)
 
+    cp = None
+    if is_mapping or is_many:
+        container_type = typing_utils.get_container_type(tp)
+        if not inspect.isabstract(container_type):
+            cp = container_type
+
     if is_mapping:
         tp = typing_utils.get_mapping_value_type(tp)
     elif is_many:  # This must be elif (instead of if), as otherwise we'd reduce mappings twice as they're also iterable
@@ -70,7 +77,7 @@ def get_type_info(tp: type) -> TypeInfo:
     if typing_utils.is_type_variable(tp):
         tp = typing_utils.get_variable_type_substitute(tp)
 
-    return TypeInfo(is_many, is_mapping, is_final, is_nullable, tp)
+    return TypeInfo(is_many, is_mapping, is_final, is_nullable, tp, cp)
 
 
 def get_relation_info(type_info: TypeInfo) -> RelationInfo:
