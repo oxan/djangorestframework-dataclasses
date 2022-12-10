@@ -337,9 +337,29 @@ their name or value. The member name is used as display name.
 * ``enum_class``: The enumeration class.
 * ``by_name``: Whether members are represented by their value (``False``) or name (``True``).
 
+IterableField
+~~~~~~~~~~~~~
+A subclass of `ListField`_ that can return values that aren't of type ``list``, such as ``set``.
+
+**Signature**: ``IterableField(container=list)``
+
+* ``container``: The type of the returned iterable. Must have a constructor that accepts a single parameter of type
+  ``list``, containing the values for the iterable.
+
+MappingField
+~~~~~~~~~~~~
+A subclass of `DictField`_ that can return values that aren't of type ``dict``, such as ``collections.OrderedDict``.
+
+**Signature**: ``IterableField(container=dict)``
+
+* ``container``: The type of the returned mapping. Must have a constructor that accepts a single parameter of type
+  ``dict``, containing the values for the mapping.
+
 .. _`enumerations`: https://docs.python.org/3/library/enum.html
 .. _`ChoiceField`: https://www.django-rest-framework.org/api-guide/fields/#choicefield
 .. _`DecimalField`: https://www.django-rest-framework.org/api-guide/fields/#decimalfield
+.. _`ListField`: https://www.django-rest-framework.org/api-guide/fields/#listfield
+.. _`DictField`: https://www.django-rest-framework.org/api-guide/fields/#dictfield
 
 Advanced usage
 --------------

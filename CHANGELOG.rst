@@ -1,3 +1,11 @@
+1.3.0, TBD
+----------
+Features & fixes:
+
+* Create values for fields of non-``list`` or ``dict`` composite types (such as ``frozenset`` or ``OrderedDict``) as
+  that type, instead of ``list`` or ``dict``.
+* Allow overriding the field for specific composite types through the ``serializer_field_mapping`` dictionary.
+
 1.2.0, 18 November 2022
 -----------------------
 Features & fixes:
