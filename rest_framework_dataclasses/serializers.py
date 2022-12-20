@@ -616,7 +616,13 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         Convert a dictionary representation of the dataclass containing only primitive values to a dataclass instance.
         """
         native_values = super(DataclassSerializer, self).to_internal_value(data)
-        empty_values = {key: empty for key in self.dataclass_definition.fields.keys() if key not in native_values}
+
+        # Only insert empty sentinel value for non-supplied values when the root serializer is in partial mode, to
+        # prevent them from showing up otherwise.
+        if self.root.partial:
+            empty_values = {key: empty for key in self.dataclass_definition.fields.keys() if key not in native_values}
+        else:
+            empty_values = {}
 
         dataclass_type = self.dataclass_definition.dataclass_type
         instance = dataclass_type(**native_values, **empty_values)

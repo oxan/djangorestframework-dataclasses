@@ -409,18 +409,22 @@ class SerializerTest(TestCase):
 
     def test_to_internal_value(self):
         ser = self.create_serializer(Person)
+        ser_partial = self.create_serializer(Person, arguments={'partial': True})
 
         # simple
         value = ser.to_internal_value({'name': 'Alice', 'length': 123, 'birth_date': '2020-02-02'})
         self.assertEqual(value, Person(name='Alice', length=123, birth_date=datetime.date(2020, 2, 2)))
 
-        # unsupplied fields
+        # unsupplied optional field
         value = ser.to_internal_value({'name': 'Alice', 'length': 123})
+        self.assertEqual(value, Person(name='Alice', length=123, birth_date=None))
+
+        # unsupplied optional fields (in partial mode)
+        value = ser_partial.to_internal_value({'name': 'Alice', 'length': 123})
         self.assertEqual(value, Person(name='Alice', length=123, birth_date=empty))
 
         # unsupplied required fields (in partial mode)
-        ser = self.create_serializer(Person, arguments={'partial': True})
-        value = ser.to_internal_value({'name': 'Alice'})
+        value = ser_partial.to_internal_value({'name': 'Alice'})
         self.assertEqual(value, Person(name='Alice', length=empty, birth_date=empty))
 
         # nested
