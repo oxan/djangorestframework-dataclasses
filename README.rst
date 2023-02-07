@@ -350,7 +350,7 @@ MappingField
 ~~~~~~~~~~~~
 A subclass of `DictField`_ that can return values that aren't of type ``dict``, such as ``collections.OrderedDict``.
 
-**Signature**: ``IterableField(container=dict)``
+**Signature**: ``MappingField(container=dict)``
 
 * ``container``: The type of the returned mapping. Must have a constructor that accepts a single parameter of type
   ``dict``, containing the values for the mapping.
