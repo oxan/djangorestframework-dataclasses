@@ -5,7 +5,7 @@ import unittest
 
 from unittest import TestCase
 
-from rest_framework import fields
+from rest_framework import fields, serializers
 from rest_framework_dataclasses.serializers import DataclassSerializer
 
 
@@ -88,3 +88,17 @@ class IssuesTest(TestCase):
 
         serializer = DataclassSerializer(dataclass=WithForwardReferences)
         serializer.get_fields()
+
+    # Issue #59: Nesting serializer inside regular serializer can result in empty sentinel for optional fields
+    def test_empty_sentinel_nesting(self):
+        @dataclasses.dataclass
+        class Foo:
+            value: typing.Optional[str] = 'default'
+
+        class ParentSerializer(serializers.Serializer):
+            foo = DataclassSerializer(dataclass=Foo)
+
+        serializer = ParentSerializer(data={'foo': {}})
+        serializer.is_valid(raise_exception=True)
+
+        self.assertEqual(serializer.validated_data['foo'].value, 'default')
