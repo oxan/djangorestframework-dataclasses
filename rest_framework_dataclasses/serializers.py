@@ -43,7 +43,7 @@ def _strip_empty_sentinels(data: AnyT, instance: Optional[AnyT] = None) -> AnyT:
                 setattr(instance, field, value)
             return instance
         else:
-            return type(data)(**values)
+            return cast(AnyT, type(data)(**values))
     elif isinstance(data, list):
         return cast(AnyT, [_strip_empty_sentinels(item) for item in data])
     elif isinstance(data, dict):
