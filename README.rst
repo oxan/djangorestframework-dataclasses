@@ -115,7 +115,7 @@ to dataclass serializers as well.
 
 Union types
 ~~~~~~~~~~~
-Dataclasses contain union fields are supported and can be used by extra package install:
+Dataclasses contain union fields are supported and can be used by extra package installtion:
 ::
 
     $ pip install djangorestframework-dataclasses[union]
