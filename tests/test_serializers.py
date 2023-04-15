@@ -462,13 +462,13 @@ class SerializerTest(TestCase):
         group_dict = {'leader': person_dict, 'people': [person_dict]}
         group_obj = Group(leader=person_obj, people=[person_obj])
 
-        person_or_group_person_dict = {'obj': person_dict | {'object_type': 'Person'}}
-        person_or_group_person_ordered_dict = {"obj": OrderedDict(person_dict) | OrderedDict({"object_type": "Person"})}
+        person_or_group_person_dict = {'obj': dict(person_dict, **{'object_type': 'Person'})}
+        person_or_group_person_ordered_dict = {"obj": OrderedDict(person_dict, **{'object_type': 'Person'})}
 
         person_or_group_person_obj = PersonOrGroup(obj=person_obj)
 
-        person_or_group_group_dict = {'obj': group_dict | {'object_type': 'Group'}}
-        person_or_group_group_ordered_dict = {"obj": OrderedDict(group_dict) | OrderedDict({"object_type": "Group"})}
+        person_or_group_group_dict = {'obj': dict(group_dict, **{'object_type': 'Group'})}
+        person_or_group_group_ordered_dict = {"obj": OrderedDict(group_dict, **{"object_type": "Group"})}
 
         person_or_group_group_obj = PersonOrGroup(obj=group_obj)
 
