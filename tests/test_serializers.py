@@ -2,6 +2,7 @@ import copy
 import dataclasses
 import datetime
 import typing
+import unittest
 from collections import OrderedDict
 from unittest import TestCase
 
@@ -10,6 +11,7 @@ from rest_framework import fields, serializers
 from rest_framework.fields import empty
 
 from rest_framework_dataclasses import types
+from rest_framework_dataclasses.import_utils import import_polymorphic_serializer
 from rest_framework_dataclasses.serializers import (
     _strip_empty_sentinels,
     DataclassListSerializer,
@@ -455,6 +457,7 @@ class SerializerTest(TestCase):
         self.assertIsInstance(f['leader'], HyperlinkedDataclassSerializer)
         self.assertIsInstance(f['people'].child, HyperlinkedDataclassSerializer)
 
+    @unittest.skipIf(import_polymorphic_serializer(raise_error=False) is None, "not supported in this library version")
     def test_union(self):
         person_dict = {'name': 'Alice', 'length': 123, 'birth_date': None}
         person_obj = Person(name='Alice', length=123, birth_date=None)
