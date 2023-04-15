@@ -447,8 +447,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         # specified for the child field through, so these can be used to recursively specify kwargs for child fields.
         extra_child_field_kwargs = extra_kwargs.get('child_kwargs', {})
         base_type_info = field_utils.get_type_info(type_info.base_type)
-        child_field_class, child_field_kwargs = self.build_typed_field(field_name, base_type_info, field_metadata,
-                                                                       extra_child_field_kwargs)
+        child_field_class, child_field_kwargs = self.build_typed_field(field_name, base_type_info,
+                                                                       field_metadata, extra_child_field_kwargs)
 
         # Include the extra kwargs specified for the child field before instantiating it.
         child_field_kwargs = self.include_extra_kwargs(child_field_kwargs, extra_child_field_kwargs)
