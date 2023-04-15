@@ -272,3 +272,20 @@ def get_variable_type_substitute(tp: type) -> type:
     if tp.__bound__ is not None:
         return tp.__bound__
     return typing.Any  # type: ignore
+
+
+def is_union_type(tp: type) -> bool:
+    """
+    Test if the given type is a union type.
+    """
+    return typing.get_origin(tp) in (typing.Union, types.UnionType)
+
+
+def get_union_choices(tp: type) -> bool:
+    """
+    Get the possible values for a union type.
+    """
+    if not is_union_type(tp):
+        raise ValueError('get_union_choices() called with non-union type.')
+
+    return typing.get_args(tp)
