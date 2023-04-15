@@ -6,11 +6,9 @@ from typing import Optional
 from rest_framework import serializers
 from rest_framework.fields import empty
 
-try:
-    from rest_polymorphic.serializers import PolymorphicSerializer
-except ImportError:
-    raise ImportError("In order to use union feature you need to install 'django-rest-polymorphic'."
-                      "You can do it by running 'pip install djangorestframework-dataclasses[union]'")
+from rest_framework_dataclasses.import_utils import import_polymorphic_serializer
+
+PolymorphicSerializer = import_polymorphic_serializer()
 
 
 class InlinePolymorphicSerializer(PolymorphicSerializer):
