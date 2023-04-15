@@ -278,7 +278,7 @@ def is_union_type(tp: type) -> bool:
     """
     Test if the given type is a union type.
     """
-    return typing.get_origin(tp) in (typing.Union, types.UnionType)
+    return get_origin(tp) in (typing.Union, types.UnionType)
 
 
 def get_union_choices(tp: type) -> tuple:
@@ -288,4 +288,4 @@ def get_union_choices(tp: type) -> tuple:
     if not is_union_type(tp):
         raise ValueError('get_union_choices() called with non-union type.')
 
-    return typing.get_args(tp)
+    return get_args(tp)
