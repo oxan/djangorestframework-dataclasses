@@ -40,7 +40,7 @@ class Group:
 
 @dataclasses.dataclass
 class PersonOrGroup:
-    obj: Person | Group
+    obj: Person | Group = dataclasses.field(metadata={'union_serializer_ref_name': 'PersonOrGroupUnionSerializer'})
 
 
 class SerializerTest(TestCase):

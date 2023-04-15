@@ -354,7 +354,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         if source in self.dataclass_definition.fields:
             field = self.dataclass_definition.fields[source]
             type_info = field_utils.get_type_info(self.dataclass_definition.field_types[source])
-            field_class, field_kwargs = self.build_typed_field(source, type_info, extra_kwargs)
+            field_class, field_kwargs = self.build_typed_field(source, type_info, field.metadata, extra_kwargs)
 
             # Include extra kwargs defined in the field metadata
             if 'serializer_kwargs' in field.metadata:
@@ -370,13 +370,13 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         # Create the serializer field instance.
         return field_class(**field_kwargs)
 
-    def build_typed_field(self, field_name: str, type_info: TypeInfo,
+    def build_typed_field(self, field_name: str, type_info: TypeInfo, field_metadata: dict,
                           extra_kwargs: KWArgs) -> SerializerFieldDefinition:
         """
         Create a serializer field for a typed dataclass field.
         """
         if type_info.is_mapping or type_info.is_many:
-            field_class, field_kwargs = self.build_composite_field(field_name, type_info, extra_kwargs)
+            field_class, field_kwargs = self.build_composite_field(field_name, type_info, field_metadata, extra_kwargs)
         elif dataclasses.is_dataclass(type_info.base_type):
             field_class, field_kwargs = self.build_dataclass_field(field_name, type_info)
         elif isinstance(type_info.base_type, type) and issubclass(type_info.base_type, Model):
@@ -386,7 +386,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         elif typing_utils.is_literal_type(type_info.base_type):
             field_class, field_kwargs = self.build_literal_field(field_name, type_info)
         elif typing_utils.is_union_type(type_info.base_type):
-            field_class, field_kwargs = self.build_dataclass_union_field(field_name, type_info)
+            field_class, field_kwargs = self.build_dataclass_union_field(field_name, type_info, field_metadata)
         else:
             field_class, field_kwargs = self.build_standard_field(field_name, type_info)
 
@@ -415,7 +415,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
         return field_class, field_kwargs
 
-    def build_composite_field(self, field_name: str, type_info: TypeInfo,
+    def build_composite_field(self, field_name: str, type_info: TypeInfo, field_metadata: dict,
                               extra_kwargs: KWArgs) -> SerializerFieldDefinition:
         """
         Create a composite (mapping or list) field.
@@ -444,7 +444,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         # specified for the child field through, so these can be used to recursively specify kwargs for child fields.
         extra_child_field_kwargs = extra_kwargs.get('child_kwargs', {})
         base_type_info = field_utils.get_type_info(type_info.base_type)
-        child_field_class, child_field_kwargs = self.build_typed_field(field_name, base_type_info,
+        child_field_class, child_field_kwargs = self.build_typed_field(field_name, base_type_info, field_metadata,
                                                                        extra_child_field_kwargs)
 
         # Include the extra kwargs specified for the child field before instantiating it.
@@ -541,7 +541,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
         return field_class, field_kwargs
 
-    def build_dataclass_union_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:
+    def build_dataclass_union_field(self, field_name: str, type_info: TypeInfo,
+                                    field_metadata: dict) -> SerializerFieldDefinition:
         """
         Builds serializer field for Union[dataclass1, dataclass2, ...] of dataclasses field
         """
@@ -560,8 +561,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             InlinePolymorphicSerializer,
             {
                 "dataclass_serializer_mapping": dataclass_serializer_mapping,
-                "resource_type_field_name": "object_type",
-                "ref_name": f"{field_name.title()}Serializer",
+                "resource_type_field_name": field_metadata.get("resource_type_field_name") or "object_type",
+                "ref_name": field_metadata.get("union_serializer_ref_name") or f"{field_name.title()}Serializer",
             },
         )
 
