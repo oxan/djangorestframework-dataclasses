@@ -4,6 +4,7 @@ import copy
 import dataclasses
 import datetime
 import decimal
+import types
 import uuid
 from collections import OrderedDict
 from enum import Enum
@@ -369,13 +370,16 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         # Create the serializer field instance.
         return field_class(**field_kwargs)
 
-    def build_typed_field(self, field_name: str, type_info: TypeInfo, field_metadata: dict,
-                          extra_kwargs: KWArgs) -> SerializerFieldDefinition:
+    def build_typed_field(self, field_name: str, type_info: TypeInfo, extra_kwargs: Optional[KWArgs] = None,
+                          field_metadata: Optional[types.MappingProxyType] = None) -> SerializerFieldDefinition:
         """
         Create a serializer field for a typed dataclass field.
         """
+        extra_kwargs = extra_kwargs or {}
+        field_metadata = field_metadata or {}
+
         if type_info.is_mapping or type_info.is_many:
-            field_class, field_kwargs = self.build_composite_field(field_name, type_info, field_metadata, extra_kwargs)
+            field_class, field_kwargs = self.build_composite_field(field_name, type_info, extra_kwargs, field_metadata)
         elif dataclasses.is_dataclass(type_info.base_type):
             field_class, field_kwargs = self.build_dataclass_field(field_name, type_info)
         elif isinstance(type_info.base_type, type) and issubclass(type_info.base_type, Model):
@@ -414,8 +418,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
         return field_class, field_kwargs
 
-    def build_composite_field(self, field_name: str, type_info: TypeInfo, field_metadata: dict,
-                              extra_kwargs: KWArgs) -> SerializerFieldDefinition:
+    def build_composite_field(self, field_name: str, type_info: TypeInfo, extra_kwargs: KWArgs,
+                              field_metadata: types.MappingProxyType) -> SerializerFieldDefinition:
         """
         Create a composite (mapping or list) field.
         """
@@ -541,7 +545,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         return field_class, field_kwargs
 
     def build_dataclass_union_field(self, field_name: str, type_info: TypeInfo,
-                                    field_metadata: dict) -> SerializerFieldDefinition:
+                                    field_metadata: types.MappingProxyType) -> SerializerFieldDefinition:
         """
         Builds serializer field for Union[dataclass1, dataclass2, ...] of dataclasses field
         """
