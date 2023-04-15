@@ -150,7 +150,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             dataclass_type = meta.dataclass
 
         # Make sure we're dealing with an actual dataclass.
-        if not dataclasses.is_dataclass(dataclass_type):
+        if not dataclasses.is_dataclass(cast(Type[T], dataclass_type)):
             raise ValueError(
                 "Class '{serializer_class}' can only be used to serialize dataclasses."
                 .format(serializer_class=self.__class__.__name__)
