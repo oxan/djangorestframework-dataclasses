@@ -1,7 +1,6 @@
 import typing
 import unittest
 import sys
-from types import NoneType
 
 from rest_framework_dataclasses import types, typing_utils
 
@@ -154,16 +153,18 @@ class TypingTest(unittest.TestCase):
 
     def test_union(self):
         self.assertTrue(typing_utils.is_union_type(typing.Union[str, int]))
-        self.assertTrue(typing_utils.is_union_type(str | int))
         self.assertTrue(typing_utils.is_union_type(typing.Optional[str]))
-        self.assertTrue(typing_utils.is_union_type(str | None))
         self.assertFalse(typing_utils.is_type_variable(int))
         self.assertFalse(typing_utils.is_type_variable(typing.List))
-
         self.assertTupleEqual(typing_utils.get_union_choices(typing.Union[str, int]), (str, int))
-        self.assertTupleEqual(typing_utils.get_union_choices(str | int), (str, int))
-        self.assertTupleEqual(typing_utils.get_union_choices(typing.Optional[str]), (str, NoneType))
-        self.assertTupleEqual(typing_utils.get_union_choices(str | None), (str, NoneType))
+
+        if sys.version_info >= (3, 10):
+            from types import NoneType
+            self.assertTrue(typing_utils.is_union_type(str | int))
+            self.assertTrue(typing_utils.is_union_type(str | None))
+            self.assertTupleEqual(typing_utils.get_union_choices(str | int), (str, int))
+            self.assertTupleEqual(typing_utils.get_union_choices(typing.Optional[str]), (str, NoneType))
+            self.assertTupleEqual(typing_utils.get_union_choices(str | None), (str, NoneType))
 
         with self.assertRaises(ValueError):
             typing_utils.get_union_choices(str)
