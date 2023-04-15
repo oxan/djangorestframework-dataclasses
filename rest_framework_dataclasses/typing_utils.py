@@ -281,7 +281,7 @@ def is_union_type(tp: type) -> bool:
     return typing.get_origin(tp) in (typing.Union, types.UnionType)
 
 
-def get_union_choices(tp: type) -> bool:
+def get_union_choices(tp: type) -> tuple:
     """
     Get the possible values for a union type.
     """
