@@ -60,3 +60,6 @@ plugins = [
 
 [tool.django-stubs]
 django_settings_module = "tests.django_settings"
+
+[project.optional-dependencies]
+union = ["django-rest-polymorphic"]

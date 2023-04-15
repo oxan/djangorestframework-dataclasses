@@ -19,8 +19,7 @@ from rest_framework.relations import HyperlinkedRelatedField, PrimaryKeyRelatedF
 from rest_framework.utils.field_mapping import get_relation_kwargs
 
 from rest_framework_dataclasses import fields, field_utils, typing_utils
-from rest_framework_dataclasses.field_utils import get_dataclass_definition, DataclassDefinition, TypeInfo, \
-    InlinePolymorphicSerializer
+from rest_framework_dataclasses.field_utils import get_dataclass_definition, DataclassDefinition, TypeInfo
 from rest_framework_dataclasses.types import Dataclass
 
 
@@ -546,6 +545,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         """
         Builds serializer field for Union[dataclass1, dataclass2, ...] of dataclasses field
         """
+        from rest_framework_dataclasses.union_serializer import InlinePolymorphicSerializer
+
         dataclass_serializer_mapping = {}
         dataclass_choices = typing_utils.get_union_choices(type_info.base_type)
         for dataclass_choice_cls in dataclass_choices:
