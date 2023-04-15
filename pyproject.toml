@@ -59,7 +59,7 @@ plugins = [
 ]
 
 [[tool.mypy.overrides]]
-module = ["polymorphic.*"]
+module = ["rest_polymorphic.*"]
 ignore_missing_imports = true
 follow_imports = 'skip'
 
