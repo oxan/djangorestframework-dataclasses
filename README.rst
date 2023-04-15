@@ -434,10 +434,10 @@ So far, field generation is supported for the following types and their subclass
 * ``typing.Iterable`` (including ``typing.List`` and `PEP 585`_-style generics such as ``list[int]``).
 * ``typing.Mapping`` (including ``typing.Dict`` and `PEP 585`_-style generics such as ``dict[str, int]``).
 * ``typing.Literal`` (mapped to a ``ChoiceField``).
+* ``typing.Union`` (mapped to a custom implementation of ``PolymorphicSerializer`` from ``django-rest-polymorphic``).
 * ``django.db.Model``
 
-The serializer also supports type variables that have an upper bound or are constrained. Type unions are not supported
-yet.
+The serializer also supports type variables that have an upper bound or are constrained.
 
 For advanced users, the ``DataclassSerializer`` also exposes an API that you can override in order to alter how
 serializer fields are generated:
@@ -461,7 +461,7 @@ serializer fields are generated:
   read-only field with the method return value.
 
 * The ``build_standard_field()``, ``build_relational_field()``, ``build_dataclass_field()``, ``build_enum_field()``,
-  ``build_literal_field()`` and ``build_composite_field()`` methods are used to process respectively fields, nested
+  ``build_literal_field()``, ``build_dataclass_union_field`` and ``build_composite_field()`` methods are used to process respectively fields, nested
   models, nested dataclasses, enums, literals, and lists or dictionaries. These can be overridden to change the field
   generation logic.
 
