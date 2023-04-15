@@ -2,7 +2,7 @@ import copy
 import dataclasses
 import datetime
 import typing
-
+from collections import OrderedDict
 from unittest import TestCase
 
 from django.core.exceptions import ImproperlyConfigured
@@ -454,16 +454,20 @@ class SerializerTest(TestCase):
         self.assertIsInstance(f['people'].child, HyperlinkedDataclassSerializer)
 
     def test_union(self):
-        person_dict = {'name': 'Alice', 'length': 123}
+        person_dict = {'name': 'Alice', 'length': 123, 'birth_date': None}
         person_obj = Person(name='Alice', length=123, birth_date=None)
 
         group_dict = {'leader': person_dict, 'people': [person_dict]}
         group_obj = Group(leader=person_obj, people=[person_obj])
 
         person_or_group_person_dict = {'obj': person_dict | {'object_type': 'Person'}}
+        person_or_group_person_ordered_dict = {"obj": OrderedDict(person_dict) | OrderedDict({"object_type": "Person"})}
+
         person_or_group_person_obj = PersonOrGroup(obj=person_obj)
 
         person_or_group_group_dict = {'obj': group_dict | {'object_type': 'Group'}}
+        person_or_group_group_ordered_dict = {"obj": OrderedDict(group_dict) | OrderedDict({"object_type": "Group"})}
+
         person_or_group_group_obj = PersonOrGroup(obj=group_obj)
 
         class PersonOrGroupSerializer(DataclassSerializer):
@@ -472,11 +476,10 @@ class SerializerTest(TestCase):
 
         # Test serialization
         ser = PersonOrGroupSerializer(instance=person_or_group_person_obj)
-        self.assertDictEqual(dict(ser.data["obj"]), person_or_group_person_dict["obj"])
+        self.assertDictEqual(ser.data, person_or_group_person_ordered_dict)
 
-        ser = PersonOrGroupSerializer(data=person_or_group_group_dict)
-        ser.is_valid(raise_exception=True)
-        self.assertEqual(ser.validated_data, person_or_group_group_obj)
+        ser = PersonOrGroupSerializer(instance=person_or_group_group_obj)
+        self.assertDictEqual(ser.data, person_or_group_group_ordered_dict)
 
         # Test deserialization
         ser = PersonOrGroupSerializer(data=person_or_group_person_dict)
