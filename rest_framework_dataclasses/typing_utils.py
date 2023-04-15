@@ -278,7 +278,7 @@ def is_union_type(tp: type) -> bool:
     """
     Test if the given type is a union type.
     """
-    return get_origin(tp) in (typing.Union, types.UnionType)
+    return get_origin(tp) in UNION_TYPES
 
 
 def get_union_choices(tp: type) -> tuple:
