@@ -376,7 +376,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         Create a serializer field for a typed dataclass field.
         """
         extra_kwargs = extra_kwargs or {}
-        field_metadata = field_metadata or {}
+        field_metadata = field_metadata or types.MappingProxyType({})
 
         if type_info.is_mapping or type_info.is_many:
             field_class, field_kwargs = self.build_composite_field(field_name, type_info, extra_kwargs, field_metadata)
