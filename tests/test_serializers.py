@@ -457,7 +457,7 @@ class SerializerTest(TestCase):
         self.assertIsInstance(f['leader'], HyperlinkedDataclassSerializer)
         self.assertIsInstance(f['people'].child, HyperlinkedDataclassSerializer)
 
-    @unittest.skipIf(import_polymorphic_serializer(raise_error=False) is None, "not supported in this library version")
+    @unittest.skipIf(import_polymorphic_serializer(raise_error=False) is None, "rest_polymorphic not installed")
     def test_union(self):
         person_dict = {'name': 'Alice', 'length': 123, 'birth_date': None}
         person_obj = Person(name='Alice', length=123, birth_date=None)
