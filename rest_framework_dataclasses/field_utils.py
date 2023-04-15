@@ -159,6 +159,10 @@ class InlinePolymorphicSerializer(PolymorphicSerializer):
         super().__init__(*args, **kwargs)
 
     def run_validation(self, data=empty):
+        """
+        The base class implementation of run_validation() relies on the fact that the validated_data will be a dict
+        but in our case it can be a dataclass instance.
+        """
         if self.partial and self.instance:
             serializer = self._get_serializer_from_model_or_instance(self.instance)
         else:
