@@ -38,6 +38,11 @@ class Group:
     people: typing.List[Person]
 
 
+@dataclasses.dataclass
+class PersonOrGroup:
+    obj: Person | Group
+
+
 class SerializerTest(TestCase):
     def create_serializer(self, dataclass=None, arguments=None, declared=None, meta=None) -> DataclassSerializer:
         arguments = arguments or {}
@@ -447,3 +452,37 @@ class SerializerTest(TestCase):
 
         self.assertIsInstance(f['leader'], HyperlinkedDataclassSerializer)
         self.assertIsInstance(f['people'].child, HyperlinkedDataclassSerializer)
+
+    def test_union(self):
+        person_dict = {'name': 'Alice', 'length': 123}
+        person_obj = Person(name='Alice', length=123, birth_date=None)
+
+        group_dict = {'leader': person_dict, 'people': [person_dict]}
+        group_obj = Group(leader=person_obj, people=[person_obj])
+
+        person_or_group_person_dict = {'obj': person_dict | {'object_type': 'Person'}}
+        person_or_group_person_obj = PersonOrGroup(obj=person_obj)
+
+        person_or_group_group_dict = {'obj': group_dict | {'object_type': 'Group'}}
+        person_or_group_group_obj = PersonOrGroup(obj=group_obj)
+
+        class PersonOrGroupSerializer(DataclassSerializer):
+            class Meta:
+                dataclass = PersonOrGroup
+
+        # Test serialization
+        ser = PersonOrGroupSerializer(instance=person_or_group_person_obj)
+        self.assertDictEqual(dict(ser.data["obj"]), person_or_group_person_dict["obj"])
+
+        ser = PersonOrGroupSerializer(data=person_or_group_group_dict)
+        ser.is_valid(raise_exception=True)
+        self.assertEqual(ser.validated_data, person_or_group_group_obj)
+
+        # Test deserialization
+        ser = PersonOrGroupSerializer(data=person_or_group_person_dict)
+        ser.is_valid(raise_exception=True)
+        self.assertEqual(ser.validated_data, person_or_group_person_obj)
+
+        ser = PersonOrGroupSerializer(data=person_or_group_group_dict)
+        ser.is_valid(raise_exception=True)
+        self.assertEqual(ser.validated_data, person_or_group_group_obj)
