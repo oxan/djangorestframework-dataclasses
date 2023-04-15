@@ -354,7 +354,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         if source in self.dataclass_definition.fields:
             field = self.dataclass_definition.fields[source]
             type_info = field_utils.get_type_info(self.dataclass_definition.field_types[source])
-            field_class, field_kwargs = self.build_typed_field(source, type_info, field.metadata, extra_kwargs)
+            field_class, field_kwargs = self.build_typed_field(source, type_info, extra_kwargs, field.metadata)
 
             # Include extra kwargs defined in the field metadata
             if 'serializer_kwargs' in field.metadata:
