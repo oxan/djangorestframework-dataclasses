@@ -113,6 +113,77 @@ Note that this usage pattern is very similar to that of the built-in ``ModelSeri
 whole API modelled after that of ``ModelSerializer``. Most features and behaviour known from ``ModelSerializer`` applies
 to dataclass serializers as well.
 
+Union types
+~~~~~~~~~~~
+Dataclasses contain union fields are supported and can be used by extra package install:
+::
+
+    $ pip install djangorestframework-dataclasses[union]
+
+Example usage:
+
+.. code:: Python
+
+    @dataclass
+    class Dog:
+        name: str
+        bark_sound: str
+
+    @dataclass
+    class Cat:
+        name: str
+        meow_sound: str
+
+    @dataclass
+    class Vet:
+        name: str
+        current_examined_animal: typing.Union[Dog, Cat]
+
+    class VetSerializer(DataclassSerializer):
+        class Meta:
+            dataclass = Vet
+
+This will serialize as:
+
+.. code:: Python
+
+    >>> serializer = VetSerializer(instance=vet)
+    >>> serializer.data
+    {
+        "name": "Dr. Neri",
+        "current_examined_animal": {
+            "name": "Albi",
+            "bark_sound": "woof"
+            "object_type": "Dog"
+        }
+    }
+
+The descriminator field is configurable (The default is ``object_type``):
+
+.. code:: Python
+
+    @dataclass
+    class Vet:
+        name: str
+        current_examined_animal: typing.Union[Dog, Cat] = field(
+            metadata={
+                "resource_type_field_name": "animal_type"
+            }
+        )
+
+The polymorphic serializer ``ref_name`` (``drf-specatcular`` uses this to create the schema) is configurable (The default is ``{union_field_name}Serializer``):
+
+.. code:: Python
+
+    @dataclass
+    class Vet:
+        name: str
+        current_examined_animal: typing.Union[Dog, Cat] = field(
+            metadata={
+                "union_serializer_ref_name": "ExaminedAnimalSerializer"
+            }
+        )
+
 Customize field generation
 --------------------------
 
