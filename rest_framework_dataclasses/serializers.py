@@ -19,7 +19,8 @@ from rest_framework.relations import HyperlinkedRelatedField, PrimaryKeyRelatedF
 from rest_framework.utils.field_mapping import get_relation_kwargs
 
 from rest_framework_dataclasses import fields, field_utils, typing_utils
-from rest_framework_dataclasses.field_utils import get_dataclass_definition, DataclassDefinition, TypeInfo
+from rest_framework_dataclasses.field_utils import get_dataclass_definition, DataclassDefinition, TypeInfo, \
+    InlinePolymorphicSerializer
 from rest_framework_dataclasses.types import Dataclass
 
 
@@ -384,6 +385,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             field_class, field_kwargs = self.build_enum_field(field_name, type_info)
         elif typing_utils.is_literal_type(type_info.base_type):
             field_class, field_kwargs = self.build_literal_field(field_name, type_info)
+        elif typing_utils.is_union_type(type_info.base_type):
+            field_class, field_kwargs = self.build_dataclass_union_field(field_name, type_info)
         else:
             field_class, field_kwargs = self.build_standard_field(field_name, type_info)
 
@@ -537,6 +540,30 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         field_kwargs: KWArgs = {}
 
         return field_class, field_kwargs
+
+    def build_dataclass_union_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:
+        """
+        Builds serializer field for Union[dataclass1, dataclass2, ...] of dataclasses field
+        """
+        dataclass_serializer_mapping = {}
+        dataclass_choices = typing_utils.get_union_choices(type_info.base_type)
+        for dataclass_choice_cls in dataclass_choices:
+            if not dataclasses.is_dataclass(dataclass_choice_cls):
+                raise NotImplementedError(
+                    f'{self.dataclass_definition.dataclass_type} - Union field: "{field_name}" must contain'
+                    f" only dataclasses, got {dataclass_choice_cls}"
+                )
+            base_type_info = field_utils.get_type_info(dataclass_choice_cls)
+            child_field_class, child_field_kwargs = self.build_dataclass_field(field_name, base_type_info)
+            dataclass_serializer_mapping[dataclass_choice_cls] = child_field_class(**child_field_kwargs)
+        return (
+            InlinePolymorphicSerializer,
+            {
+                "dataclass_serializer_mapping": dataclass_serializer_mapping,
+                "resource_type_field_name": "object_type",
+                "ref_name": f"{field_name.title()}Serializer",
+            },
+        )
 
     def build_unknown_field(self, field_name: str) -> SerializerFieldDefinition:
         """
