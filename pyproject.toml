@@ -58,8 +58,13 @@ plugins = [
     "mypy_drf_plugin.main",
 ]
 
+[[tool.mypy.overrides]]
+module = ["polymorphic.*"]
+ignore_missing_imports = true
+follow_imports = 'skip'
+
 [tool.django-stubs]
 django_settings_module = "tests.django_settings"
 
 [project.optional-dependencies]
-union = ["django-rest-polymorphic"]
+union = ["django-rest-polymorphic == 0.1.10"]
