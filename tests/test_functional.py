@@ -9,6 +9,7 @@ import uuid
 from unittest import TestCase
 
 from rest_framework import fields
+from rest_framework.serializers import Serializer
 
 from rest_framework_dataclasses.serializers import DataclassSerializer
 from rest_framework_dataclasses.types import Literal
@@ -268,3 +269,59 @@ class ObscureFeaturesTest(TestCase, FunctionalTestMixin):
 
     def setUp(self):
         self.instance.name = 'Bob'
+
+# Testcase 5 (source='*')
+
+
+@dataclasses.dataclass
+class PersonPet:
+    name: str
+    pet: Pet
+
+
+class PersonPetEmbeddedDataclassSerializer(DataclassSerializer):
+    class PetSerializer(DataclassSerializer):
+        class Meta:
+            dataclass = Pet
+            fields = ['name', 'owner_name', 'animal']
+
+        name = fields.CharField(source='pet.name')
+        animal = fields.CharField(source='pet.animal')
+        owner_name = fields.CharField(source='name')
+
+    class Meta:
+        dataclass = PersonPet
+        fields = ['name', 'pet']
+
+    name = fields.CharField()
+    pet = PetSerializer(source='*')
+
+
+class PersonPetEmbeddedDefaultSerializer(DataclassSerializer):
+    class PetSerializer(Serializer):
+        class Meta:
+            dataclass = Pet
+            fields = ['name', 'owner_name', 'animal']
+
+        name = fields.CharField(source='pet.name')
+        animal = fields.CharField(source='pet.animal')
+        owner_name = fields.CharField(source='name')
+
+    class Meta:
+        dataclass = PersonPet
+        fields = ['name', 'pet']
+
+    name = fields.CharField()
+    pet = PetSerializer(source='*')
+
+
+class SourceStarDataclassTest(TestCase, FunctionalTestMixin):
+    serializer = PersonPetEmbeddedDataclassSerializer
+    instance = PersonPet(name='Milo', pet=Pet(name='Katsu', animal='cat'))
+    representation = {'name': 'Milo', 'pet': {'name': 'Katsu', 'animal': 'cat', 'owner_name': 'Milo'}}
+
+
+class SourceStarDefaultTest(TestCase, FunctionalTestMixin):
+    serializer = PersonPetEmbeddedDefaultSerializer
+    instance = PersonPet(name='Milo', pet=Pet(name='Katsu', animal='cat'))
+    representation = {'name': 'Milo', 'pet': {'name': 'Katsu', 'animal': 'cat', 'owner_name': 'Milo'}}
