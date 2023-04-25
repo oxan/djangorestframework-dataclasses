@@ -51,6 +51,12 @@ def _strip_empty_sentinels(data: AnyT, instance: Optional[AnyT] = None) -> AnyT:
     return data
 
 
+# Sentinel value for source="*" so that we can create dataclasses from embedded structures
+@dataclasses.dataclass
+class EmptyDataclass:
+    pass
+
+
 # noinspection PyMethodMayBeStatic
 class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
     """
@@ -134,12 +140,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             )
 
             dataclass_type = self.dataclass
-        else:
-            assert hasattr(self, 'Meta'), (
-                "Class '{serializer_class}' missing `Meta` attribute."
-                .format(serializer_class=self.__class__.__name__)
-            )
-
+        elif hasattr(self, 'Meta'):
             meta = getattr(self, 'Meta')
             assert hasattr(meta, 'dataclass'), (
                 "Class '{serializer_class}' missing `Meta.dataclass` attribute."
@@ -147,6 +148,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             )
 
             dataclass_type = meta.dataclass
+        else:
+            # This dataclass is a sentinel value to avoid issues with embedded structures using source="*"
+            dataclass_type = EmptyDataclass
 
         # Make sure we're dealing with an actual dataclass.
         if not dataclasses.is_dataclass(dataclass_type):
@@ -205,6 +209,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         # Copy declared fields, so that the field on the serializer class remains unchanged when the fields are bound to
         # the serializer instance.
         declared_fields = copy.deepcopy(self._declared_fields)
+
+        if not (self.dataclass or getattr(getattr(self, "Meta", None), "dataclass", None)):
+            return declared_fields
 
         # Copy fields declared in metadata, for the same reason.
         metadata_fields = {field.name: copy.deepcopy(field.metadata['serializer_field'])
@@ -625,7 +632,10 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             empty_values = {}
 
         dataclass_type = self.dataclass_definition.dataclass_type
-        instance = dataclass_type(**native_values, **empty_values)
+        if dataclass_type is EmptyDataclass:
+            instance = dict(**native_values, **empty_values)
+        else:
+            instance = dataclass_type(**native_values, **empty_values)
 
         return cast(T, instance)
 

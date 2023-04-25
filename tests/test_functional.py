@@ -5,9 +5,9 @@ import decimal
 import enum
 import typing
 import uuid
-
 from unittest import TestCase
 
+import rest_framework.serializers
 from rest_framework import fields
 
 from rest_framework_dataclasses.serializers import DataclassSerializer
@@ -205,3 +205,50 @@ class PartialPersonTest(TestCase):
 
         self.assertIs(output_instance, input_instance)
         self.assertEqual(output_instance, expected_output)
+
+
+class PetEmbeddedDataclassSerializer(DataclassSerializer):
+    class PetInformationSerializer(DataclassSerializer):
+        animal = fields.CharField()
+
+    class Meta:
+        dataclass = Pet
+        fields = ['name', 'information']
+
+    name = fields.CharField()
+    information = PetInformationSerializer(source="*")
+
+
+class PetEmbeddedDefaultSerializer(DataclassSerializer):
+    class PetInformationSerializer(rest_framework.serializers.Serializer):
+        animal = fields.CharField()
+
+    class Meta:
+        dataclass = Pet
+        fields = ['name', 'information']
+
+    name = fields.CharField()
+    information = PetInformationSerializer(source="*")
+
+
+class SourceStartTest(TestCase):
+    DATA = {'name': 'Milo', 'information': {'animal': 'cat'}}
+    INSTANCE = Pet(name='Milo', animal='cat')
+
+    def test_dataclass_serialization(self):
+        serializer = PetEmbeddedDataclassSerializer(instance=self.INSTANCE)
+        self.assertEqual(serializer.data, self.DATA)
+
+    def test_dataclass_deserialization(self):
+        serializer = PetEmbeddedDataclassSerializer(data=self.DATA)
+        serializer.is_valid(raise_exception=True)
+        self.assertEqual(serializer.validated_data, self.INSTANCE)
+
+    def test_default_serialization(self):
+        serializer = PetEmbeddedDefaultSerializer(instance=self.INSTANCE)
+        self.assertDictEqual(serializer.data, self.DATA)
+
+    def test_default_deserialization(self):
+        serializer = PetEmbeddedDefaultSerializer(data=self.DATA)
+        serializer.is_valid(raise_exception=True)
+        self.assertEqual(serializer.validated_data, self.INSTANCE)
