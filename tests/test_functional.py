@@ -5,9 +5,9 @@ import decimal
 import enum
 import typing
 import uuid
-
 from unittest import TestCase
 
+import rest_framework.serializers
 from rest_framework import fields
 
 from rest_framework_dataclasses.serializers import DataclassSerializer
@@ -205,3 +205,70 @@ class PartialPersonTest(TestCase):
 
         self.assertIs(output_instance, input_instance)
         self.assertEqual(output_instance, expected_output)
+
+
+@dataclasses.dataclass
+class PersonPet:
+    name: str
+    pet: Pet
+
+
+class PersonEmbeddedDataclassSerializer(DataclassSerializer):
+    class PetSerializer(DataclassSerializer):
+        class Meta:
+            dataclass = Pet
+            fields = ['name', 'owner_name', 'animal']
+
+        name = fields.CharField(source='pet.name')
+        animal = fields.CharField(source='pet.animal')
+        owner_name = fields.CharField(source="name")
+
+    class Meta:
+        dataclass = PersonPet
+        fields = ['name', 'pet']
+
+    name = fields.CharField()
+    pet = PetSerializer(source="*")
+
+
+class PersonEmbeddedDefaultSerializer(DataclassSerializer):
+    class PetSerializer(rest_framework.serializers.Serializer):
+        class Meta:
+            dataclass = Pet
+            fields = ['name', 'owner_name', 'animal']
+
+        name = fields.CharField(source='pet.name')
+        animal = fields.CharField(source='pet.animal')
+        owner_name = fields.CharField(source="name")
+
+    class Meta:
+        dataclass = PersonPet
+        fields = ['name', 'pet']
+
+    name = fields.CharField()
+    pet = PetSerializer(source="*")
+
+
+class SourceStartTest(TestCase):
+    DATA = {'name': 'Milo', 'pet': {'name': 'Katsu', 'animal': 'cat', 'owner_name': 'Milo'}}
+    INSTANCE = PersonPet(name='Milo', pet=Pet(name='Katsu', animal='cat'))
+
+    def test_dataclass_serialization(self):
+        serializer = PersonEmbeddedDataclassSerializer(instance=self.INSTANCE)
+        self.assertEqual(serializer.data, self.DATA)
+
+    def test_dataclass_deserialization(self):
+        serializer = PersonEmbeddedDataclassSerializer(data=self.DATA)
+        # TODO: See how this fails because of unexpected arguments
+        serializer.is_valid(raise_exception=True)
+        self.assertEqual(serializer.validated_data, self.INSTANCE)
+
+    def test_default_serialization(self):
+        serializer = PersonEmbeddedDefaultSerializer(instance=self.INSTANCE)
+        self.assertDictEqual(serializer.data, self.DATA)
+
+    def test_default_deserialization(self):
+        serializer = PersonEmbeddedDefaultSerializer(data=self.DATA)
+        serializer.is_valid(raise_exception=True)
+        # TODO: See how this returns at least the correct arguments
+        self.assertEqual(serializer.validated_data, PersonPet(name='Milo', pet=dict(name='Katsu', animal='cat')))

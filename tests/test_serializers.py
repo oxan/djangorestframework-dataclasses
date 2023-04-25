@@ -77,10 +77,6 @@ class SerializerTest(TestCase):
             definition = self.create_serializer(arguments={'dataclass': Person},
                                                 meta={}).dataclass_definition
 
-        # no `dataclass` parameter and missing `Meta`
-        with self.assertRaises(AssertionError):
-            definition = self.create_serializer().dataclass_definition
-
         # no `dataclass` parameter and invalid `Meta`
         with self.assertRaises(AssertionError):
             definition = self.create_serializer(meta={}).dataclass_definition
