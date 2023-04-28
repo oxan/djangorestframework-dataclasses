@@ -31,6 +31,18 @@ T = TypeVar('T', bound=Dataclass)
 AnyT = TypeVar('AnyT')
 
 
+# Helper function create a dataclass instance
+def _create_instance(dataclass_type: Type[T], fields_map: Dict[str, dataclasses.Field[Any]], values: KWArgs) -> T:
+    # Aggregate fields by whether they must (or, at minimum can) be supplied to the constructor, or they can't be.
+    init_params = {name: value for name, value in values.items() if fields_map[name].init}
+    set_params = {name: value for name, value in values.items() if not fields_map[name].init}
+
+    instance = dataclass_type(**init_params)
+    for name, value in set_params.items():
+        setattr(instance, name, value)
+    return instance
+
+
 # Helper function to strip the empty sentinel value and replace it with the default value from a dataclass
 def _strip_empty_sentinels(data: AnyT, instance: Optional[AnyT] = None) -> AnyT:
     if dataclasses.is_dataclass(data) and not isinstance(data, type):
@@ -43,7 +55,7 @@ def _strip_empty_sentinels(data: AnyT, instance: Optional[AnyT] = None) -> AnyT:
                 setattr(instance, field, value)
             return instance
         else:
-            return cast(AnyT, type(data)(**values))
+            return cast(AnyT, _create_instance(type(data), {f.name: f for f in dataclasses.fields(data)}, values))
     elif isinstance(data, list):
         return cast(AnyT, [_strip_empty_sentinels(item) for item in data])
     elif isinstance(data, dict):
@@ -189,14 +201,16 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             "inspect 'serializer.validated_data' instead. "
         )
 
-        # Explicitly use internal validated_data here, as we want the empty sentinel values instead of the normalized
-        # external representation.
-        validated_data = dataclasses.replace(self._validated_data, **kwargs)
+        # Explicitly use the internal validated_data here, as the empty sentinel values must not be stripped yet. Do not
+        # use dataclasses.replace(), as it doesn't handle non-init fields properly.
+        obj = copy.deepcopy(self._validated_data)
+        for field, value in kwargs.items():
+            setattr(obj, field, value)
 
         if self.instance is not None:
-            self.instance = self.update(self.instance, validated_data)
+            self.instance = self.update(self.instance, obj)
         else:
-            self.instance = self.create(validated_data)
+            self.instance = self.create(obj)
 
         assert self.instance is not None, (
             '`update()` or `create()` did not return an object instance.'
@@ -629,13 +643,13 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         # Only insert empty sentinel value for non-supplied values when the root serializer is in partial mode, to
         # prevent them from showing up otherwise.
         if self.root.partial:
-            empty_values = {key: empty for key in self.dataclass_definition.fields.keys() if key not in native_values}
-        else:
-            empty_values = {}
+            native_values.update({key: empty
+                                  for key, field in self.dataclass_definition.fields.items()
+                                  if key not in native_values and field.init})
 
-        dataclass_type = self.dataclass_definition.dataclass_type
-        instance = dataclass_type(**native_values, **empty_values)
-
+        instance = _create_instance(self.dataclass_definition.dataclass_type,
+                                    self.dataclass_definition.fields,
+                                    native_values)
         return cast(T, instance)
 
     @cached_property

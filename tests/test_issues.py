@@ -102,3 +102,17 @@ class IssuesTest(TestCase):
         serializer.is_valid(raise_exception=True)
 
         self.assertEqual(serializer.validated_data['foo'].value, 'default')
+
+    # Issue #71: Deserialization fails for dataclasses with non-init fields
+    def test_noninit_fields(self):
+        @dataclasses.dataclass
+        class A:
+            foo: str
+            bar: str = dataclasses.field(init=False)
+
+        serializer = DataclassSerializer(dataclass=A, data={'foo': 'abc', 'bar': 'def'})
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+
+        self.assertEqual(instance.foo, 'abc')
+        self.assertEqual(instance.bar, 'def')

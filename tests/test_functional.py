@@ -71,6 +71,16 @@ class PersonSerializer(DataclassSerializer):
         }
 
 
+@dataclasses.dataclass
+class Obscure:
+    name: str = dataclasses.field(init=False)
+
+
+class ObscureSerializer(DataclassSerializer):
+    class Meta:
+        dataclass = Obscure
+
+
 # noinspection PyUnresolvedReferences
 class FunctionalTestMixin:
     def test_serialize(self):
@@ -205,3 +215,15 @@ class PartialPersonTest(TestCase):
 
         self.assertIs(output_instance, input_instance)
         self.assertEqual(output_instance, expected_output)
+
+
+class ObscureFeaturesTest(TestCase, FunctionalTestMixin):
+    serializer = ObscureSerializer
+    instance = Obscure()
+    representation = {
+        'name': 'Bob'
+    }
+    representation_readonly = {}
+
+    def setUp(self):
+        self.instance.name = 'Bob'
