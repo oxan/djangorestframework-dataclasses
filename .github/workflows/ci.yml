@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Install dependencies
-        run: pip install tox tox-gh-actions coverage[toml]
+        run: pip install '.[test]'
       - name: Run tox
         run: tox
       - name: Generate coverage report
@@ -37,6 +37,6 @@ jobs:
         with:
           python-version: 3.11
       - name: Install dependencies
-        run: pip install mypy django-stubs djangorestframework-stubs
+        run: pip install '.[dev]'
       - name: Run mypy
         run: mypy
