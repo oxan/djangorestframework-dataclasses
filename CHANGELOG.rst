@@ -1,10 +1,19 @@
 1.3.0, TBD
 ----------
+Breaking changes:
+
+* The type annotations now require mypy 1.0 or higher to validate correctly.
+
 Features & fixes:
 
 * Create values for fields of non-``list`` or ``dict`` composite types (such as ``frozenset`` or ``OrderedDict``) as
   that type, instead of ``list`` or ``dict``.
 * Allow overriding the field for specific composite types through the ``serializer_field_mapping`` dictionary.
+* Don't set optional fields to ``rest_framework.fields.empty`` sentinel value when used in non-partial mode. This fixes
+  occasional leaks of the sentinel into dataclasses returned to the user, for example when a ``DataclassSerializer`` was
+  nested inside a regular serializer. Not setting, and later stripping, the sentinels also increases performance.
+* Support dataclasses with fields that have ``init=False``.
+* Support ``save()`` on serializers with ``many=True``.
 
 1.2.0, 18 November 2022
 -----------------------
