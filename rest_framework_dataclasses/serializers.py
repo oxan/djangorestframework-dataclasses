@@ -160,10 +160,19 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
     # Default `create` and `update` behavior...
 
     def create(self, validated_data: T) -> T:
-        return _strip_empty_sentinels(validated_data)
+        if self.root.partial:
+            return _strip_empty_sentinels(validated_data)
+        return validated_data
 
     def update(self, instance: T, validated_data: T) -> T:
-        return _strip_empty_sentinels(validated_data, instance)
+        if self.root.partial:
+            return _strip_empty_sentinels(validated_data, instance)
+
+        # Don't just return `validated_data` here, as the idea of update() is that it changes the existing object (which
+        # might have references outside our control) instead of creating a new object.
+        for field in self.dataclass_definition.fields.keys():
+            setattr(instance, field, getattr(validated_data, field))
+        return instance
 
     def save(self, **kwargs: KWArgs) -> T:
         assert hasattr(self, '_errors'), (
@@ -636,7 +645,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         partial updates.
         """
         internal_validated_data = super(DataclassSerializer, self).validated_data
-        return _strip_empty_sentinels(internal_validated_data)
+        if self.root.partial:
+            return _strip_empty_sentinels(internal_validated_data)
+        return internal_validated_data
 
 
 class DataclassListSerializer(rest_framework.serializers.ListSerializer, Generic[T]):

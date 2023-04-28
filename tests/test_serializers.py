@@ -103,10 +103,11 @@ class SerializerTest(TestCase):
         self.assertEqual(_strip_empty_sentinels(in_data), out_data)
 
     def test_save(self):
-        def mock_save(validated_data, instance=None, **kwargs):
+        def mock_save(validated_data, instance=None, partial=False, **kwargs):
             serializer = self.create_serializer(Person)
             serializer._errors = []
             serializer._validated_data = validated_data
+            serializer.partial = partial
             if instance:
                 serializer.instance = instance
             return serializer.save(**kwargs)
@@ -145,14 +146,14 @@ class SerializerTest(TestCase):
         # full update with unsupplied optional field
         inst = Person(name='Alice', length=123, birth_date=datetime.datetime(2020, 2, 2))
         in_data = Person(name='Alice', length=123, birth_date=empty)
-        out_data = mock_save(in_data, instance=inst)
+        out_data = mock_save(in_data, instance=inst, partial=True)
         self.assertIs(out_data, inst)
         self.assertEqual(out_data.birth_date, datetime.datetime(2020, 2, 2))
 
         # partial update with missing required field
         inst = Person(name='Alice', length=123)
         in_data = Person(name='Bob', length=empty)
-        out_data = mock_save(in_data, instance=inst)
+        out_data = mock_save(in_data, instance=inst, partial=True)
         self.assertIs(out_data, inst)
         self.assertEqual(out_data.name, 'Bob')
         self.assertEqual(out_data.length, 123)
