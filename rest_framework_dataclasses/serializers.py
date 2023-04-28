@@ -657,7 +657,9 @@ class DataclassListSerializer(rest_framework.serializers.ListSerializer, Generic
         Replace empty sentinel value with default value in public representation.
         """
         internal_validated_data = super(DataclassListSerializer, self).validated_data
-        return _strip_empty_sentinels(internal_validated_data)
+        if self.root.partial:
+            return _strip_empty_sentinels(internal_validated_data)
+        return internal_validated_data
 
 
 class HyperlinkedDataclassSerializer(DataclassSerializer, Generic[T]):
