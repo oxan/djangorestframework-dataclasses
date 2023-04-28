@@ -116,3 +116,18 @@ class IssuesTest(TestCase):
 
         self.assertEqual(instance.foo, 'abc')
         self.assertEqual(instance.bar, 'def')
+
+    # Issue #75: save() on list serializer doesn't work
+    def test_list_save(self):
+        @dataclasses.dataclass
+        class Foo:
+            name: str
+
+        serializer = DataclassSerializer(dataclass=Foo, many=True, data=[{'name': 'bar'}, {'name': 'baz'}])
+        serializer.is_valid(raise_exception=True)
+        items = serializer.save()
+
+        self.assertIsInstance(items, list)
+        self.assertEqual(len(items), 2)
+        self.assertEqual(items[0], Foo('bar'))
+        self.assertEqual(items[1], Foo('baz'))

@@ -665,6 +665,44 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
 
 
 class DataclassListSerializer(rest_framework.serializers.ListSerializer, Generic[T]):
+    # Type hints for (private) fields on the parent class
+    _validated_data: List[T]
+
+    def save(self, **kwargs: KWArgs) -> T:
+        assert hasattr(self, '_errors'), (
+            "You must call `.is_valid()` before calling `.save()`."
+        )
+
+        assert not self.errors, (
+            "You cannot call `.save()` on a serializer with invalid data."
+        )
+
+        assert not hasattr(self, '_data'), (
+            "You cannot call `.save()` after accessing `serializer.data`."
+            "If you need to access data before committing to the dataclass then "
+            "inspect 'serializer.validated_data' instead. "
+        )
+
+        # Explicitly use the internal validated_data here, as the empty sentinel values must not be stripped yet. Do not
+        # use dataclasses.replace(), as it doesn't handle non-init fields properly.
+        validated_data = []
+        for item in self._validated_data:
+            obj = copy.deepcopy(item)
+            for field, value in kwargs.items():
+                setattr(obj, field, value)
+            validated_data.append(obj)
+
+        if self.instance is not None:
+            self.instance = self.update(self.instance, validated_data)
+        else:
+            self.instance = self.create(validated_data)
+
+        assert self.instance is not None, (
+            '`update()` or `create()` did not return an object instance.'
+        )
+
+        return self.instance
+
     @cached_property
     def validated_data(self) -> List[T]:
         """
