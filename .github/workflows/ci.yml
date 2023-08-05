@@ -18,7 +18,8 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Install dependencies
-        run: pip install '.[test]'
+        # Explicitly also install tox-gh-actions to prevent tests from using system interpreter
+        run: pip install '.[test]' tox-gh-actions
       - name: Run tox
         run: tox
       - name: Generate coverage report
