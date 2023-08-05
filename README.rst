@@ -20,12 +20,11 @@ A `dataclasses <https://docs.python.org/3/library/dataclasses.html>`__ serialize
 Requirements
 ------------
 
-* Python (3.7+)
-* Django (2.2+)
-* Django REST Framework (3.9+)
+* Python (3.8+)
+* Django (3.2+)
+* Django REST Framework (3.11+)
 
-These are the supported Python and package versions. Older versions will probably work as well, but haven't been tested
-by the author.
+These are the supported Python and package versions. Older versions will probably work as well, but aren't tested.
 
 Installation
 ------------
