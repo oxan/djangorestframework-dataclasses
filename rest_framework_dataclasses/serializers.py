@@ -95,6 +95,7 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         dict:               fields.MappingField,
     }
     serializer_related_field: Type[SerializerField] = PrimaryKeyRelatedField
+    serializer_union_field: Type[SerializerField] = fields.UnionField
 
     # Unfortunately this cannot be an actual field as Python processes the class before it defines the class, but this
     # comes close enough.
@@ -403,6 +404,8 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
             field_class, field_kwargs = self.build_dataclass_field(field_name, type_info)
         elif isinstance(type_info.base_type, type) and issubclass(type_info.base_type, Model):
             field_class, field_kwargs = self.build_relational_field(field_name, type_info)
+        elif typing_utils.is_union_type(type_info.base_type):
+            field_class, field_kwargs = self.build_union_field(field_name, type_info, extra_kwargs)
         elif isinstance(type_info.base_type, type) and issubclass(type_info.base_type, Enum):
             field_class, field_kwargs = self.build_enum_field(field_name, type_info)
         elif typing_utils.is_literal_type(type_info.base_type):
@@ -507,6 +510,27 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         if not issubclass(field_class, HyperlinkedRelatedField):
             field_kwargs.pop('view_name', None)
 
+        return field_class, field_kwargs
+
+    def build_union_field(self, field_name: str, type_info: TypeInfo,
+                          extra_kwargs: KWArgs) -> SerializerFieldDefinition:
+        """
+        Create UnionField from a union type.
+        """
+        # Pass the extra kwargs that are specified for the child field through to *all* child serializers.
+        extra_child_kwargs = extra_kwargs.get('child_kwargs', {})
+
+        child_fields = {}
+        for member_type in typing_utils.get_union_choices(type_info.base_type):
+            member_type_info = field_utils.get_type_info(member_type)
+            child_field_class, child_kwargs = self.build_typed_field(field_name, member_type_info, extra_child_kwargs)
+            child_field_kwargs = self.include_extra_kwargs(child_kwargs, extra_child_kwargs)
+            child_fields[member_type_info.base_type] = child_field_class(**child_field_kwargs)
+
+        field_class = self.serializer_union_field
+        field_kwargs = {
+            'child_fields': child_fields
+        }
         return field_class, field_kwargs
 
     def build_enum_field(self, field_name: str, type_info: TypeInfo) -> SerializerFieldDefinition:
