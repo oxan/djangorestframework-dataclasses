@@ -15,6 +15,7 @@ Features & fixes:
 * Support dataclasses with fields that have ``init=False``.
 * Support ``save()`` on serializers with ``many=True``.
 * Support for fields with union types.
+* Support nested serializers with ``source='*'``.
 * Fix ``child_kwargs`` defined in dataclass field metadata (as opposed to ``extra_kwargs`` field on ``Meta`` subclass).
 
 1.2.0, 18 November 2022
