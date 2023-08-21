@@ -323,6 +323,9 @@ class SerializerTest(TestCase):
         class TestPerson:
             name: str
             length: int = dataclasses.field(metadata={'serializer_kwargs': {'max_value': 200}})
+            numbers: typing.List[int] = dataclasses.field(metadata={
+                'serializer_kwargs': {'child_kwargs': {'max_value': 200}}
+            })
             species: types.Final[str] = 'Human'
 
             def age(self) -> int:
@@ -344,6 +347,11 @@ class SerializerTest(TestCase):
         length_field = serializer.create_field('length', {})
         self.assertIsInstance(length_field, fields.IntegerField)
         self.assertEqual(length_field.max_value, 200)
+
+        # Composite field with metadata argument for child field
+        numbers_field = serializer.create_field('numbers', {})
+        self.assertIsInstance(numbers_field.child, fields.IntegerField)
+        self.assertEqual(numbers_field.child.max_value, 200)
 
         # Function field
         age_field = serializer.create_field('age', {})

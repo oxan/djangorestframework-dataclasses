@@ -376,12 +376,11 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         # Determine the serializer field class and keyword arguments.
         if source in self.dataclass_definition.fields:
             field = self.dataclass_definition.fields[source]
+            if 'serializer_kwargs' in field.metadata:  # merge extra kwargs defined in the field metadata
+                extra_kwargs = {**field.metadata['serializer_kwargs'], **extra_kwargs}
+
             type_info = field_utils.get_type_info(self.dataclass_definition.field_types[source])
             field_class, field_kwargs = self.build_typed_field(source, type_info, extra_kwargs)
-
-            # Include extra kwargs defined in the field metadata
-            if 'serializer_kwargs' in field.metadata:
-                field_kwargs = self.include_extra_kwargs(field_kwargs, field.metadata['serializer_kwargs'])
         elif hasattr(self.dataclass_definition.dataclass_type, source):
             field_class, field_kwargs = self.build_property_field(source)
         else:
