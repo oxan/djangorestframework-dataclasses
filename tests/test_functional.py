@@ -14,10 +14,38 @@ from rest_framework_dataclasses.serializers import DataclassSerializer
 from rest_framework_dataclasses.types import Literal
 
 
-class Gender(enum.Enum):
-    MALE = 'male'
-    FEMALE = 'female'
-    OTHER = 'other'
+# noinspection PyUnresolvedReferences
+class FunctionalTestMixin:
+    def test_serialize(self):
+        serializer = self.serializer(instance=self.instance)
+        self.assertDictEqual(serializer.data, {**self.representation, **self.representation_readonly})
+
+    def test_validated_data(self):
+        serializer = self.serializer(data=self.representation)
+        serializer.is_valid(raise_exception=True)
+
+        self.assertEqual(serializer.validated_data, self.instance)
+
+    def test_create(self: TestCase):
+        serializer = self.serializer(data=self.representation)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+
+        self.assertEqual(instance, self.instance)
+
+    def test_update(self: TestCase):
+        empty_instance = copy.deepcopy(self.instance)
+        for field in dataclasses.fields(empty_instance):
+            setattr(empty_instance, field.name, None)
+
+        serializer = self.serializer(instance=empty_instance, data=self.representation)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+
+        self.assertIs(instance, empty_instance)
+        self.assertEqual(instance, self.instance)
+
+# Testcase 1 (simple, not that this fixture is also used further down)
 
 
 @dataclasses.dataclass
@@ -31,6 +59,57 @@ class Pet:
 class PetSerializer(DataclassSerializer):
     class Meta:
         dataclass = Pet
+
+
+class PetTest(TestCase, FunctionalTestMixin):
+    serializer = PetSerializer
+    instance = Pet(animal='cat', name='Milo')
+    representation = {'animal': 'cat', 'name': 'Milo', 'weight': None}
+    representation_readonly = {}
+
+# Testcase 2 (union types)
+
+
+@dataclasses.dataclass
+class Wood:
+    species: str
+
+
+@dataclasses.dataclass
+class Steel:
+    alloy: str
+
+
+@dataclasses.dataclass
+class Building:
+    material: typing.Union[Wood, Steel]
+
+
+class BuildingSerializer(DataclassSerializer):
+    class Meta:
+        dataclass = Building
+
+
+class BuildingTest(TestCase, FunctionalTestMixin):
+    serializer = BuildingSerializer
+    instance = Building(
+        material=Wood(species='oak')
+    )
+    representation = {
+        'material': {
+            'type': 'Wood',
+            'species': 'oak',
+        }
+    }
+    representation_readonly = {}
+
+# Testcase 3 (complicated fields and nesting)
+
+
+class Gender(enum.Enum):
+    MALE = 'male'
+    FEMALE = 'female'
+    OTHER = 'other'
 
 
 @dataclasses.dataclass
@@ -69,75 +148,6 @@ class PersonSerializer(DataclassSerializer):
             'phone': {'child_kwargs': {'max_length': 15}},
             'pets': {'child_kwargs': {'extra_kwargs': {'weight': {'max_digits': 4, 'decimal_places': 1}}}},
         }
-
-
-@dataclasses.dataclass
-class Wood:
-    species: str
-
-
-@dataclasses.dataclass
-class Steel:
-    alloy: str
-
-
-@dataclasses.dataclass
-class Building:
-    material: typing.Union[Wood, Steel]
-
-
-class BuildingSerializer(DataclassSerializer):
-    class Meta:
-        dataclass = Building
-
-
-@dataclasses.dataclass
-class Obscure:
-    name: str = dataclasses.field(init=False)
-
-
-class ObscureSerializer(DataclassSerializer):
-    class Meta:
-        dataclass = Obscure
-
-
-# noinspection PyUnresolvedReferences
-class FunctionalTestMixin:
-    def test_serialize(self):
-        serializer = self.serializer(instance=self.instance)
-        self.assertDictEqual(serializer.data, {**self.representation, **self.representation_readonly})
-
-    def test_validated_data(self):
-        serializer = self.serializer(data=self.representation)
-        serializer.is_valid(raise_exception=True)
-
-        self.assertEqual(serializer.validated_data, self.instance)
-
-    def test_create(self: TestCase):
-        serializer = self.serializer(data=self.representation)
-        serializer.is_valid(raise_exception=True)
-        instance = serializer.save()
-
-        self.assertEqual(instance, self.instance)
-
-    def test_update(self: TestCase):
-        empty_instance = copy.deepcopy(self.instance)
-        for field in dataclasses.fields(empty_instance):
-            setattr(empty_instance, field.name, None)
-
-        serializer = self.serializer(instance=empty_instance, data=self.representation)
-        serializer.is_valid(raise_exception=True)
-        instance = serializer.save()
-
-        self.assertIs(instance, empty_instance)
-        self.assertEqual(instance, self.instance)
-
-
-class PetTest(TestCase, FunctionalTestMixin):
-    serializer = PetSerializer
-    instance = Pet(animal='cat', name='Milo')
-    representation = {'animal': 'cat', 'name': 'Milo', 'weight': None}
-    representation_readonly = {}
 
 
 class PersonTest(TestCase, FunctionalTestMixin):
@@ -236,19 +246,17 @@ class PartialPersonTest(TestCase):
         self.assertIs(output_instance, input_instance)
         self.assertEqual(output_instance, expected_output)
 
+# Testcase 4 (obscure features)
 
-class BuildingTest(TestCase, FunctionalTestMixin):
-    serializer = BuildingSerializer
-    instance = Building(
-        material=Wood(species='oak')
-    )
-    representation = {
-        'material': {
-            'type': 'Wood',
-            'species': 'oak',
-        }
-    }
-    representation_readonly = {}
+
+@dataclasses.dataclass
+class Obscure:
+    name: str = dataclasses.field(init=False)
+
+
+class ObscureSerializer(DataclassSerializer):
+    class Meta:
+        dataclass = Obscure
 
 
 class ObscureFeaturesTest(TestCase, FunctionalTestMixin):
