@@ -125,10 +125,11 @@ Currently, automatic field generation is supported for the following types and t
 * ``typing.Iterable`` (including ``typing.List`` and `PEP 585`_-style generics such as ``list[int]``).
 * ``typing.Mapping`` (including ``typing.Dict`` and `PEP 585`_-style generics such as ``dict[str, int]``).
 * ``typing.Literal`` (mapped to a ``ChoiceField``).
+* ``typing.Union`` (mapped to a ``UnionField``, including `PEP 604`_-style unions such as ``str | int``, see
+  `UnionField`_ section below for more information).
 * ``django.db.Model``
 
-The serializer also supports type variables that have an upper bound or are constrained. Type unions are not supported
-yet.
+The serializer also supports type variables that have an upper bound or are constrained.
 
 Customize field generation
 --------------------------
@@ -229,6 +230,8 @@ properties on the class:
 
 * The ``serializer_related_field`` property is the serializer field class that is used for relations to models.
 
+* The ``serializer_union_field`` property is the serializer field class that is used for union types.
+
 * The ``serializer_dataclass_field`` property is the serializer field class that is used for nested dataclasses. Note
   that since Python process the class body before it defines the class, this property is implemented using the
   `property decorator`_ to allow it to reference the containing class.
@@ -243,10 +246,10 @@ controlled by the following methods, which are considered a stable part of the A
 * The ``build_property_field()`` method is called to create serializer fields for methods. By default this creates a
   read-only field with the method return value.
 
-* The ``build_standard_field()``, ``build_relational_field()``, ``build_dataclass_field()``, ``build_enum_field()``,
-  ``build_literal_field()`` and ``build_composite_field()`` methods are used to process respectively fields, nested
-  models, nested dataclasses, enums, literals, and lists or dictionaries. These can be overridden to change the field
-  generation logic.
+* The ``build_standard_field()``, ``build_relational_field()``, ``build_dataclass_field()``, ``build_union_field()``,
+  ``build_enum_field()``, ``build_literal_field()`` and ``build_composite_field()`` methods are used to process
+  respectively fields, nested models, nested dataclasses, union types, enums, literals, and lists or dictionaries. These
+  can be overridden to change the field generation logic.
 
 Note that when creating a subclass of ``DataclassSerializer``, most likely you will want to set the
 ``serializer_dataclass_field`` property to the subclass, so that any nested dataclasses are serialized using the
@@ -420,6 +423,100 @@ A subclass of `DictField`_ that can return values that aren't of type ``dict``, 
 
 * ``container``: The type of the returned mapping. Must have a constructor that accepts a single parameter of type
   ``dict``, containing the values for the mapping.
+
+UnionField
+~~~~~~~~~~
+A field that can serialize and deserialize values of multiple types (i.e. values of a union type). The serialized
+representation of this field includes an extra discriminator field (by default named ``type``) that indicates the actual
+type of the value.
+
+.. code:: Python
+
+    @dataclass
+    class A:
+        a: str
+
+    @dataclass
+    class B:
+        b: int
+
+    @dataclass
+    class Response:
+        obj: A | B
+
+    class ResponseSerializer(DataclassSerializer):
+        class Meta:
+            dataclass = Response
+
+.. code:: Python
+
+    >>> response = Response(obj=A('hello'))
+    >>> serializer = ResponseSerializer(instance=response)
+    >>> serializer.data
+    {
+        'obj': {'type': 'A', 'a': 'hello'}
+    }
+    >>> deserializer = ResponseSerializer(data={'obj': {'type': 'B', 'b': 42}})
+    >>> deserializer.is_valid()
+    True
+    >>> deserializer.validated_data
+    Response(obj=B(b=42))
+
+The name of the discriminator field can be changed by setting the ``discriminator_field_name`` keyword argument for the
+field:
+
+.. code:: Python
+
+    @dataclass
+    class Response:
+        obj: A | B = dataclasses.field(metadata={'serializer_kwargs': {'discriminator_field_name': 'a_or_b'}})
+
+    # or:
+    class ResponseSerializer(DataclassSerializer):
+        class Meta:
+            dataclass = Response
+            extra_kwargs = {
+                'obj': {'discriminator_field_name': 'a_or_b'}
+            }
+
+Unions containing a type that does not serialize to a mapping (e.g. an integer or string) can be serialized by enabling
+nesting with the ``nest_value`` keyword argument:
+
+.. code:: Python
+
+    @dataclass
+    class Response:
+        amount: int | float
+
+    class ResponseSerializer(DataclassSerializer):
+        class Meta:
+            dataclass = Response
+            extra_kwargs = {
+                'amount': {'nest_value': True}
+            }
+
+.. code:: Python
+
+    >>> response = Response(amount=42)
+    >>> serializer = ResponseSerializer(instance=response)
+    >>> serializer.data
+    {
+        'amount': {'type': 'int', 'value': 42}
+    }
+
+**Signature**: ``UnionField(child_fields, nest_value=False, discriminator_field_name=None, value_field_name=None)``.
+
+* ``child_fields``: A dictionary mapping the individual types to the serializer field to be used for them.
+* ``nest_value``: Whether the value should be put under a key (``True``), or merged directly into the serialized
+  representation of this field (``False``). This is disabled by default, and should usually only be set to ``True`` if
+  any of the union member types is a primitive.
+* ``discriminator_field_name``: Name of the discriminator field, defaults to ``type``.
+* ``value_field_name``: Name of the field under which values are nested if ``nest_value`` is used defaults to ``value``.
+
+The values used in the discriminator field can be changed by subclassing ``UnionField`` and overriding the
+``get_discriminator(self, type)`` method. The lone argument to this method is one of the member types of union (a key
+from the ``child_fields`` parameter), and it should return the appropriate string to be used in the discriminator field
+for values of this type.
 
 .. _`enumerations`: https://docs.python.org/3/library/enum.html
 .. _`ChoiceField`: https://www.django-rest-framework.org/api-guide/fields/#choicefield

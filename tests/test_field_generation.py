@@ -168,6 +168,20 @@ class FieldsTest(unittest.TestCase):
         self.check_field(Person, relations.HyperlinkedRelatedField,
                          {'queryset': Person._default_manager, 'view_name': 'person-detail'})
 
+    def test_union(self):
+        cls, kwargs = self.build_typed_field(typing.Union[str, int])
+        self.assertEqual(cls, custom_fields.UnionField)
+        self.assertEqual(type(kwargs['child_fields'][str]), fields.CharField)
+        self.assertEqual(type(kwargs['child_fields'][int]), fields.IntegerField)
+
+        # check that kwargs generated for the child field are applied
+        _, kwargs = self.build_typed_field(typing.Union[int, Literal['a', 'b']])
+        self.assertEqual(kwargs['child_fields'][Literal['a', 'b']].choices, {'a': 'a', 'b': 'b'})
+
+        # check that child_kwargs are applied
+        _, kwargs = self.build_typed_field(typing.Union[str, int], extra_kwargs={'child_kwargs': {'label': 'Test'}})
+        self.assertEqual(kwargs['child_fields'][str].label, 'Test')
+
     def test_literal(self):
         self.check_field(Literal['a', 'b'], fields.ChoiceField,
                          {'choices': ['a', 'b'], 'allow_blank': False})

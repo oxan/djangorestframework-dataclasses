@@ -72,6 +72,26 @@ class PersonSerializer(DataclassSerializer):
 
 
 @dataclasses.dataclass
+class Wood:
+    species: str
+
+
+@dataclasses.dataclass
+class Steel:
+    alloy: str
+
+
+@dataclasses.dataclass
+class Building:
+    material: typing.Union[Wood, Steel]
+
+
+class BuildingSerializer(DataclassSerializer):
+    class Meta:
+        dataclass = Building
+
+
+@dataclasses.dataclass
 class Obscure:
     name: str = dataclasses.field(init=False)
 
@@ -215,6 +235,20 @@ class PartialPersonTest(TestCase):
 
         self.assertIs(output_instance, input_instance)
         self.assertEqual(output_instance, expected_output)
+
+
+class BuildingTest(TestCase, FunctionalTestMixin):
+    serializer = BuildingSerializer
+    instance = Building(
+        material=Wood(species='oak')
+    )
+    representation = {
+        'material': {
+            'type': 'Wood',
+            'species': 'oak',
+        }
+    }
+    representation_readonly = {}
 
 
 class ObscureFeaturesTest(TestCase, FunctionalTestMixin):

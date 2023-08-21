@@ -208,6 +208,29 @@ def get_optional_type(tp: type) -> type:
         return get_origin(tp)[remaining_arguments]  # type: ignore
 
 
+def is_union_type(tp: type) -> bool:
+    """
+    Test if the given type is a union type type.
+    """
+    # Exclude unions of a single type with None, as they're considered optional types instead.
+    none_type = type(None)
+    return (
+        get_origin(tp) in UNION_TYPES and
+        sum(1 for member_type in get_args(tp) if member_type is not none_type) >= 2
+    )
+
+
+def get_union_choices(tp: type) -> typing.List[type]:
+    """
+    Get the possible values for a union type.
+    """
+    if not is_union_type(tp):
+        raise ValueError('get_union_choices() called with non-union type.')
+
+    none_type = type(None)
+    return [tp for tp in get_args(tp) if tp is not none_type]
+
+
 def is_literal_type(tp: type) -> bool:
     """
     Test if the given type is a literal expression.

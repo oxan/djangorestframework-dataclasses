@@ -95,6 +95,28 @@ class TypingTest(unittest.TestCase):
 
         self.assertFalse(typing_utils.is_optional_type(int | str))
 
+    def test_union(self):
+        self.assertTrue(typing_utils.is_union_type(typing.Union[str, int]))
+        self.assertTrue(typing_utils.is_union_type(typing.Union[str, int, float]))
+        self.assertFalse(typing_utils.is_union_type(typing.Union[str]))
+        self.assertFalse(typing_utils.is_union_type(typing.Union[str, None]))
+        self.assertFalse(typing_utils.is_union_type(typing.Optional[str]))
+
+        self.assertEqual(typing_utils.get_union_choices(typing.Union[str, int]), [str, int])
+        self.assertEqual(typing_utils.get_union_choices(typing.Union[str, int, float]), [str, int, float])
+
+        with self.assertRaises(ValueError):
+            typing_utils.get_union_choices(str)
+
+    @unittest.skipIf(sys.version_info < (3, 10, 0), 'Python 3.10 required')
+    def test_union_pep604(self):
+        self.assertTrue(typing_utils.is_union_type(str | int))
+        self.assertTrue(typing_utils.is_union_type(str | int | float))
+        self.assertFalse(typing_utils.is_union_type(str | None))
+
+        self.assertEqual(typing_utils.get_union_choices(str | int), [str, int])
+        self.assertEqual(typing_utils.get_union_choices(str | int | float), [str, int, float])
+
     def test_final(self):
         self.assertTrue(typing_utils.is_final_type(types.Final[int]))
         self.assertTrue(typing_utils.is_final_type(types.Final))

@@ -14,6 +14,7 @@ Features & fixes:
   nested inside a regular serializer. Not setting, and later stripping, the sentinels also increases performance.
 * Support dataclasses with fields that have ``init=False``.
 * Support ``save()`` on serializers with ``many=True``.
+* Support for fields with union types.
 
 1.2.0, 18 November 2022
 -----------------------
