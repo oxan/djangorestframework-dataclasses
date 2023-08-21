@@ -1,5 +1,5 @@
-1.3.0, TBD
-----------
+1.3.0, 21 August 2023
+---------------------
 Breaking changes:
 
 * The type annotations now require mypy 1.0 or higher to validate correctly.
