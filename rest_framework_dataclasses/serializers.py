@@ -168,7 +168,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
                 .format(serializer_class=self.__class__.__name__)
             )
 
-        return get_dataclass_definition(dataclass_type)
+        # Cast back to Type[T], as mypy thinks it's a Type[DataclassInstance] due to the is_dataclass() check.
+        # https://github.com/python/mypy/issues/14941
+        return get_dataclass_definition(cast(Type[T], dataclass_type))
 
     # Default `create` and `update` behavior...
 
@@ -670,10 +672,9 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
                                   for key, field in self.dataclass_definition.fields.items()
                                   if key not in native_values and field.init})
 
-        instance = _create_instance(self.dataclass_definition.dataclass_type,
-                                    self.dataclass_definition.fields,
-                                    native_values)
-        return cast(T, instance)
+        return _create_instance(self.dataclass_definition.dataclass_type,
+                                self.dataclass_definition.fields,
+                                native_values)
 
     @cached_property
     def validated_data(self) -> T:

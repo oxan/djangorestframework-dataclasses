@@ -46,7 +46,7 @@ dependencies = [
 dev = [
     "django-stubs",
     "djangorestframework-stubs",
-    "mypy ~= 1.1.1",
+    "mypy ~= 1.5.1",
 ]
 test = [
     "coverage[toml]",
