@@ -112,6 +112,24 @@ Note that this usage pattern is very similar to that of the built-in ``ModelSeri
 whole API modelled after that of ``ModelSerializer``. Most features and behaviour known from ``ModelSerializer`` applies
 to dataclass serializers as well.
 
+Field mapping
+-------------
+
+Currently, automatic field generation is supported for the following types and their subclasses:
+
+* ``str``, ``bool``, ``int`` and ``float``.
+* ``date``, ``datetime``, ``time`` and ``timedelta`` from the ``datetime`` package.
+* ``decimal.Decimal`` (``max_digits`` and ``decimal_places`` default to ``None`` and ``2`` respectively).
+* ``uuid.UUID``
+* ``enum.Enum`` (mapped to a ``EnumField``)
+* ``typing.Iterable`` (including ``typing.List`` and `PEP 585`_-style generics such as ``list[int]``).
+* ``typing.Mapping`` (including ``typing.Dict`` and `PEP 585`_-style generics such as ``dict[str, int]``).
+* ``typing.Literal`` (mapped to a ``ChoiceField``).
+* ``django.db.Model``
+
+The serializer also supports type variables that have an upper bound or are constrained. Type unions are not supported
+yet.
+
 Customize field generation
 --------------------------
 
@@ -198,6 +216,43 @@ subclass. All options have the same behaviour as the identical options in ``Mode
 * ``validators`` functionality is unchanged.
 
 * ``depth`` (as known from ``ModelSerializer``) is not supported, it will always nest infinitely deep.
+
+Changing default behaviour
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Additionally, it is possible to change the default behaviour of the ``DataclassSerializer`` by setting one of these
+properties on the class:
+
+* The ``serializer_field_mapping`` property contains a dictionary that maps types to REST framework serializer classes.
+  You can override or extend this mapping to change the serializer field classes that are used for fields based on
+  their type. This dictionary also accepts dataclasses as keys to change the serializer used for a nested dataclass.
+
+* The ``serializer_related_field`` property is the serializer field class that is used for relations to models.
+
+* The ``serializer_dataclass_field`` property is the serializer field class that is used for nested dataclasses. If you
+  subclass ``DataclassSerializer`` to customize behaviour, you probably want to change this property to use the subclass
+  as well. Note that since Python process the class body before it defines the class, this property is implemented using
+  the `property decorator`_ to allow it to reference the containing class.
+
+Finally, you can create a subclass that overrides methods of the ``DataclassSerializer``. The field generation is
+controlled by the following methods, which are considered a stable part of the API:
+
+* The ``build_unknown_field()`` method is called to create serializer fields for dataclass fields that are not
+  understood. By default this just throws an error, but you can extend this with custom logic to create serializer
+  fields.
+
+* The ``build_property_field()`` method is called to create serializer fields for methods. By default this creates a
+  read-only field with the method return value.
+
+* The ``build_standard_field()``, ``build_relational_field()``, ``build_dataclass_field()``, ``build_enum_field()``,
+  ``build_literal_field()`` and ``build_composite_field()`` methods are used to process respectively fields, nested
+  models, nested dataclasses, enums, literals, and lists or dictionaries. These can be overridden to change the field
+  generation logic.
+
+.. _`PEP 591`: https://www.python.org/dev/peps/pep-0591/
+.. _`PEP 585`: https://www.python.org/dev/peps/pep-0585/
+.. _`PEP 604`: https://www.python.org/dev/peps/pep-0604/
+.. _`property decorator`: https://docs.python.org/3/library/functions.html#property
 
 Nesting
 -------
@@ -419,55 +474,6 @@ Advanced usage
   The ``validated_data`` property on the serializer has these ``empty`` markers stripped as well, and replaced with the
   default values for not-provided fields. Note that this means you cannot access ``validated_data`` on the serializer
   for partial updates where no data has been provided for fields without a default value, an Exception will be thrown.
-
-Field mappings
---------------
-
-So far, field generation is supported for the following types and their subclasses:
-
-* ``str``, ``bool``, ``int`` and ``float``.
-* ``date``, ``datetime``, ``time`` and ``timedelta`` from the ``datetime`` package.
-* ``decimal.Decimal`` (``max_digits`` and ``decimal_places`` default to ``None`` and ``2`` respectively).
-* ``uuid.UUID``
-* ``enum.Enum`` (mapped to a ``EnumField``)
-* ``typing.Iterable`` (including ``typing.List`` and `PEP 585`_-style generics such as ``list[int]``).
-* ``typing.Mapping`` (including ``typing.Dict`` and `PEP 585`_-style generics such as ``dict[str, int]``).
-* ``typing.Literal`` (mapped to a ``ChoiceField``).
-* ``django.db.Model``
-
-The serializer also supports type variables that have an upper bound or are constrained. Type unions are not supported
-yet.
-
-For advanced users, the ``DataclassSerializer`` also exposes an API that you can override in order to alter how
-serializer fields are generated:
-
-* The ``serializer_field_mapping`` property contains a dictionary that maps types to REST framework serializer classes.
-  You can override or extend this mapping to change the serializer field classes that are used for fields based on
-  their type. This dictionary also accepts dataclasses as keys to change the serializer used for nested dataclass.
-
-* The ``serializer_related_field`` property is the serializer field class that is used for relations to models.
-
-* The ``serializer_dataclass_field`` property is the serializer field class that is used for nested dataclasses. If you
-  subclass ``DataclassSerializer`` to customize behaviour, you probably want to change this property to use the subclass
-  as well. Note that since Python process the class body before it defines the class, this property is implemented using
-  the `property decorator`_ to allow it to reference the containing class.
-
-* The ``build_unknown_field()`` method is called to create serializer fields for dataclass fields that are not
-  understood. By default this just throws an error, but you can extend this with custom logic to create serializer
-  fields.
-
-* The ``build_property_field()`` method is called to create serializer fields for methods. By default this creates a
-  read-only field with the method return value.
-
-* The ``build_standard_field()``, ``build_relational_field()``, ``build_dataclass_field()``, ``build_enum_field()``,
-  ``build_literal_field()`` and ``build_composite_field()`` methods are used to process respectively fields, nested
-  models, nested dataclasses, enums, literals, and lists or dictionaries. These can be overridden to change the field
-  generation logic.
-
-.. _`PEP 591`: https://www.python.org/dev/peps/pep-0591/
-.. _`PEP 585`: https://www.python.org/dev/peps/pep-0585/
-.. _`PEP 604`: https://www.python.org/dev/peps/pep-0604/
-.. _`property decorator`: https://docs.python.org/3/library/functions.html#property
 
 Schemas
 -------
