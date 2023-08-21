@@ -229,10 +229,9 @@ properties on the class:
 
 * The ``serializer_related_field`` property is the serializer field class that is used for relations to models.
 
-* The ``serializer_dataclass_field`` property is the serializer field class that is used for nested dataclasses. If you
-  subclass ``DataclassSerializer`` to customize behaviour, you probably want to change this property to use the subclass
-  as well. Note that since Python process the class body before it defines the class, this property is implemented using
-  the `property decorator`_ to allow it to reference the containing class.
+* The ``serializer_dataclass_field`` property is the serializer field class that is used for nested dataclasses. Note
+  that since Python process the class body before it defines the class, this property is implemented using the
+  `property decorator`_ to allow it to reference the containing class.
 
 Finally, you can create a subclass that overrides methods of the ``DataclassSerializer``. The field generation is
 controlled by the following methods, which are considered a stable part of the API:
@@ -248,6 +247,19 @@ controlled by the following methods, which are considered a stable part of the A
   ``build_literal_field()`` and ``build_composite_field()`` methods are used to process respectively fields, nested
   models, nested dataclasses, enums, literals, and lists or dictionaries. These can be overridden to change the field
   generation logic.
+
+Note that when creating a subclass of ``DataclassSerializer``, most likely you will want to set the
+``serializer_dataclass_field`` property to the subclass, so that any nested dataclasses are serialized using the
+subclass as well.
+
+.. code:: Python
+
+    class CustomDataclassSerializer(DataclassSerializer):
+        @property
+        def serializer_dataclass_field(self):
+            return CustomDataclassSerializer
+
+        # Implement additional and/or override existing methods here
 
 .. _`PEP 591`: https://www.python.org/dev/peps/pep-0591/
 .. _`PEP 585`: https://www.python.org/dev/peps/pep-0585/
