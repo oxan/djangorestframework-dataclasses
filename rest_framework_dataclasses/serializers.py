@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections
 import copy
 import dataclasses
 import datetime
@@ -664,6 +665,23 @@ class DataclassSerializer(rest_framework.serializers.Serializer, Generic[T]):
         Convert a dictionary representation of the dataclass containing only primitive values to a dataclass instance.
         """
         native_values = super(DataclassSerializer, self).to_internal_value(data)
+
+        # If the source is a wildcard, don't try to instantiate anything, but just return the native values as a dict.
+        # It'll be merged into the native values of the parent serializer by the parent class.
+        if self.source == '*':
+            return native_values
+
+        # If any fields have a wildcard source, their native value will hold a values dictionary instead of a dataclass,
+        # so convert them into a dataclass.
+        if any(field.source == '*' for field in self.fields.values()):
+            for field_name, tp in self.dataclass_definition.field_types.items():
+                if (
+                    field_name in native_values and
+                    dataclasses.is_dataclass(tp) and
+                    isinstance(native_values[field_name], collections.abc.Mapping)
+                ):
+                    dataclass_fields = {field.name: field for field in dataclasses.fields(tp)}
+                    native_values[field_name] = _create_instance(tp, dataclass_fields, native_values[field_name])
 
         # Only insert empty sentinel value for non-supplied values when the root serializer is in partial mode, to
         # prevent them from showing up otherwise.
