@@ -16,6 +16,8 @@ from rest_framework_dataclasses.types import Literal
 
 # noinspection PyUnresolvedReferences
 class FunctionalTestMixin:
+    representation_readonly = {}
+
     def test_serialize(self):
         serializer = self.serializer(instance=self.instance)
         self.assertDictEqual(serializer.data, {**self.representation, **self.representation_readonly})
@@ -65,7 +67,6 @@ class PetTest(TestCase, FunctionalTestMixin):
     serializer = PetSerializer
     instance = Pet(animal='cat', name='Milo')
     representation = {'animal': 'cat', 'name': 'Milo', 'weight': None}
-    representation_readonly = {}
 
 # Testcase 2 (union types)
 
@@ -101,7 +102,6 @@ class BuildingTest(TestCase, FunctionalTestMixin):
             'species': 'oak',
         }
     }
-    representation_readonly = {}
 
 # Testcase 3 (complicated fields and nesting)
 
@@ -265,7 +265,6 @@ class ObscureFeaturesTest(TestCase, FunctionalTestMixin):
     representation = {
         'name': 'Bob'
     }
-    representation_readonly = {}
 
     def setUp(self):
         self.instance.name = 'Bob'
