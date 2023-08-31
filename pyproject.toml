@@ -59,6 +59,9 @@ Documentation = "https://github.com/oxan/djangorestframework-dataclasses/blob/ma
 Changelog = "https://github.com/oxan/djangorestframework-dataclasses/blob/master/CHANGELOG.rst"
 Sponsor = "https://github.com/sponsors/oxan"
 
+[tool.setuptools.package-data]
+"rest_framework_dataclasses" = ["py.typed"]
+
 [tool.coverage.run]
 branch = true
 source = ["rest_framework_dataclasses"]
