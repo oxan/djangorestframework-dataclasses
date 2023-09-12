@@ -325,3 +325,45 @@ class SourceStarDefaultTest(TestCase, FunctionalTestMixin):
     serializer = PersonPetEmbeddedDefaultSerializer
     instance = PersonPet(name='Milo', pet=Pet(name='Katsu', animal='cat'))
     representation = {'name': 'Milo', 'pet': {'name': 'Katsu', 'animal': 'cat', 'owner_name': 'Milo'}}
+
+
+
+
+# Testcase 6 (union types with custom discriminator)
+
+
+@dataclasses.dataclass
+class Cycle:
+    diameter: float
+    type: Literal["cycle"] = "cycle"
+    serializer_discriminant = "cycle"
+
+
+@dataclasses.dataclass
+class Square:
+    side: float
+    type: Literal["square"] = "square"
+    serializer_discriminant = "square"
+
+
+@dataclasses.dataclass
+class Figure:
+    shape: typing.Union[Cycle, Square]
+
+
+class FigureSerializer(DataclassSerializer):
+    class Meta:
+        dataclass = Figure
+
+
+class ShapeTest(TestCase, FunctionalTestMixin):
+    serializer = FigureSerializer
+    instance = Figure(
+        shape=Cycle(diameter=1.5)
+    )
+    representation = {
+        'shape': {
+            'type': 'cycle',
+            'diameter': 1.5,
+        }
+    }
