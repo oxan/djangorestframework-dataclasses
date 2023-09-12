@@ -1,3 +1,9 @@
+1.3.1, 12 September 2023
+------------------------
+Features & fixes:
+
+* Fix inclusion of py.typed in wheel.
+
 1.3.0, 21 August 2023
 ---------------------
 Breaking changes:
