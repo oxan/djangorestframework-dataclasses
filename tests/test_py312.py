@@ -21,3 +21,15 @@ class Python312Test(unittest.TestCase):
         self.assertEqual(hints['a'], str)
         self.assertEqual(hints['b'], list[str])
         self.assertEqual(typing.get_origin(hints['c']), list)
+
+    def test_typevar_pep695(self):
+        type GenericList[T: str] = list[T]
+        def fn() -> GenericList:
+            pass
+
+        tp = typing_utils.get_resolved_type_hints(fn)['return']
+
+        self.assertTrue(typing_utils.is_iterable_type(tp))
+        element_type = typing_utils.get_iterable_element_type(tp)
+        self.assertTrue(typing_utils.is_type_variable(element_type))
+        self.assertEqual(typing_utils.get_type_variable_substitution(element_type), str)
