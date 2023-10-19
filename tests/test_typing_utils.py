@@ -204,6 +204,6 @@ class TypingTest(unittest.TestCase):
         self.assertFalse(typing_utils.is_type_variable(int))
         self.assertFalse(typing_utils.is_type_variable(typing.List))
 
-        self.assertEqual(typing_utils.get_variable_type_substitute(T), typing.Any)
-        self.assertEqual(typing_utils.get_variable_type_substitute(U), typing.Union[int, str])
-        self.assertEqual(typing_utils.get_variable_type_substitute(V), Exception)
+        self.assertEqual(typing_utils.get_type_variable_substitution(T), typing.Any)
+        self.assertEqual(typing_utils.get_type_variable_substitution(U), typing.Union[int, str])
+        self.assertEqual(typing_utils.get_type_variable_substitution(V), Exception)

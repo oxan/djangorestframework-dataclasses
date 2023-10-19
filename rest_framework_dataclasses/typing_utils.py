@@ -285,7 +285,7 @@ def is_type_variable(tp: type) -> bool:
     return isinstance(tp, typing.TypeVar)
 
 
-def get_variable_type_substitute(tp: type) -> type:
+def get_type_variable_substitution(tp: type) -> type:
     """
     Get the substitute for a variable type.
     """
