@@ -1,3 +1,4 @@
+import types as types_module
 import typing
 import unittest
 import sys
@@ -5,11 +6,45 @@ import sys
 from rest_framework_dataclasses import types, typing_utils
 
 
+class GlobalType:
+    pass
+
+
 class TypingTest(unittest.TestCase):
     def assertAnyTypeEquivalent(self, tp: type):
         # In some cases we accept either typing.Any (used by Python 3.9+) or an unconstrained typevar (used by Python
         # 3.7 and 3.8). It's essentially the same, and we strip the typevar before usage anyway.
         self.assertTrue(tp is typing.Any or (isinstance(tp, typing.TypeVar) and len(tp.__constraints__) == 0))
+
+    def test_resolve(self):
+        class Hinted:
+            a: str
+            b: 'str'
+
+        hints = typing_utils.get_resolved_type_hints(Hinted)
+        self.assertEqual(hints['a'], str)
+        self.assertEqual(hints['b'], str)
+
+    @unittest.skipIf(sys.version_info < (3, 9, 0), 'Python 3.9 required')
+    def test_resolve_pep585(self):
+        # Pre-Python 3.11 only references to the global namespace are supported
+        class Hinted:
+            a: list[GlobalType]
+            b: list['GlobalType']
+
+        hints = typing_utils.get_resolved_type_hints(Hinted)
+        self.assertEqual(hints['a'], types_module.GenericAlias(list, (GlobalType, )))
+        self.assertEqual(hints['b'], types_module.GenericAlias(list, (GlobalType, )))
+
+    @unittest.skipIf(sys.version_info < (3, 11, 0), 'Python 3.11 required')
+    def test_resolve_pep585_full(self):
+        class Hinted:
+            a: list[str]
+            b: list['str']
+
+        hints = typing_utils.get_resolved_type_hints(Hinted)
+        self.assertEqual(hints['a'], types_module.GenericAlias(list, (str, )))
+        self.assertEqual(hints['b'], types_module.GenericAlias(list, (str, )))
 
     def test_iterable(self):
         self.assertTrue(typing_utils.is_iterable_type(typing.Iterable[str]))

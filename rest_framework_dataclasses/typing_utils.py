@@ -56,8 +56,9 @@ def get_resolved_type_hints(tp: type) -> typing.Dict[str, type]:
     Resolving the type hints means converting any stringified type hint into an actual type object. These can come from
     either forward references (PEP 484), or postponed evaluation (PEP 563).
     """
-    # typing.get_type_hints() does the heavy lifting for us, except when using PEP 585 generic types that contain a
-    # stringified type hint (see https://bugs.python.org/issue41370)
+    # typing.get_type_hints() does the heavy lifting for us, except:
+    # - when using PEP 585 generic types that contain a stringified type hint, on Python 3.9 and 3.10. See
+    #   https://bugs.python.org/issue41370. Only references to objects in the global namespace are supported here.
     def _resolve_type(context_type: type, resolve_type: typing.Union[str, type]) -> type:
         if isinstance(resolve_type, str):
             globalsns = sys.modules[context_type.__module__].__dict__
