@@ -56,8 +56,10 @@ def get_resolved_type_hints(tp: type) -> typing.Dict[str, type]:
     Resolving the type hints means converting any stringified type hint into an actual type object. These can come from
     either forward references (PEP 484), or postponed evaluation (PEP 563).
     """
-    # typing.get_type_hints() does the heavy lifting for us, except when using PEP 585 generic types that contain a
-    # stringified type hint (see https://bugs.python.org/issue41370)
+    # typing.get_type_hints() does the heavy lifting for us, except:
+    # - when using PEP 585 generic types that contain a stringified type hint, on Python 3.9 and 3.10. See
+    #   https://bugs.python.org/issue41370. Only references to objects in the global namespace are supported here.
+    # - when using PEP 695 type aliases
     def _resolve_type(context_type: type, resolve_type: typing.Union[str, type]) -> type:
         if isinstance(resolve_type, str):
             globalsns = sys.modules[context_type.__module__].__dict__
@@ -66,11 +68,13 @@ def get_resolved_type_hints(tp: type) -> typing.Dict[str, type]:
             return _resolve_type_hint(context_type, resolve_type)
 
     def _resolve_type_hint(context_type: type, resolve_type: type) -> type:
-        if not hasattr(types, 'GenericAlias') or not isinstance(resolve_type, types.GenericAlias):
+        if hasattr(types, 'GenericAlias') and isinstance(resolve_type, types.GenericAlias):
+            args = tuple(_resolve_type(context_type, arg) for arg in resolve_type.__args__)
+            return typing.cast(type, types.GenericAlias(resolve_type.__origin__, args))
+        elif hasattr(typing, 'TypeAliasType') and isinstance(resolve_type, typing.TypeAliasType):
+            return _resolve_type_hint(context_type, resolve_type.__value__)
+        else:
             return resolve_type
-
-        args = tuple(_resolve_type(context_type, arg) for arg in resolve_type.__args__)
-        return typing.cast(type, types.GenericAlias(resolve_type.__origin__, args))
 
     return {k: _resolve_type_hint(tp, v) for k, v in typing.get_type_hints(tp).items()}
 
@@ -284,7 +288,7 @@ def is_type_variable(tp: type) -> bool:
     return isinstance(tp, typing.TypeVar)
 
 
-def get_variable_type_substitute(tp: type) -> type:
+def get_type_variable_substitution(tp: type) -> type:
     """
     Get the substitute for a variable type.
     """

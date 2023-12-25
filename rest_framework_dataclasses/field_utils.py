@@ -75,7 +75,7 @@ def get_type_info(tp: type) -> TypeInfo:
         tp = typing_utils.get_iterable_element_type(tp)
 
     if typing_utils.is_type_variable(tp):
-        tp = typing_utils.get_variable_type_substitute(tp)
+        tp = typing_utils.get_type_variable_substitution(tp)
 
     return TypeInfo(is_many, is_mapping, is_final, is_nullable, tp, cp)
 
