@@ -103,7 +103,7 @@ class UnionField(Field, Generic[T]):
             self.type_mapping[tp] = discriminator
 
     def get_discriminator(self, tp: type) -> str:
-        return tp.__name__
+        return getattr(tp, "serializer_discriminant", tp.__name__)
 
     def to_representation(self, data: T) -> Dict[str, Any]:
         discriminator = field_utils.lookup_type_in_mapping(self.type_mapping, type(data))
