@@ -593,3 +593,18 @@ module that contains the extension.
 
 .. _`drf-spectacular`: https://github.com/tfranzel/drf-spectacular
 .. _`extension`: https://github.com/tfranzel/drf-spectacular/blob/master/drf_spectacular/contrib/rest_framework_dataclasses.py
+
+Typing
+------
+When using a type checker such as mypy, please ensure that the ``djangorestframework-stubs`` package is installed. The
+type hints for this library depend on the type hints for DRF being available to validate successfully, and might
+otherwise generate some seemingly bizarre mypy errors.
+
+The ``DataclassSerializer`` class is generic, and must be parameterized with the dataclass type to have correct types on
+its properties and methods:
+
+.. code:: Python
+
+    class PersonSerializer(DataclassSerializer[Person]):
+        class Meta:
+            dataclass = Person
