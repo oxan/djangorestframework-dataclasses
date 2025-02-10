@@ -61,7 +61,7 @@ def _strip_empty_sentinels(data: AnyT, instance: Optional[AnyT] = None) -> AnyT:
         return cast(AnyT, [_strip_empty_sentinels(item) for item in data])
     elif isinstance(data, dict):
         return cast(AnyT, {key: _strip_empty_sentinels(value) for key, value in data.items()})
-    return data
+    return cast(AnyT, data)
 
 
 # noinspection PyMethodMayBeStatic
