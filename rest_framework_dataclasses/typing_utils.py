@@ -126,7 +126,7 @@ def get_iterable_element_type(tp: type) -> type:
         raise ValueError('get_iterable_element_type() called with non-iterable type.')
 
     args = get_args(tp)
-    return args[0] if len(args) > 0 else typing.Any
+    return args[0] if len(args) > 0 else typing.Any  # type: ignore
 
 
 def is_mapping_type(tp: type) -> bool:
@@ -156,7 +156,7 @@ def get_mapping_value_type(tp: type) -> type:
         raise ValueError('get_mapping_value_type() called with non-mapping type.')
 
     args = get_args(tp)
-    return args[1] if len(args) == 2 else typing.Any
+    return args[1] if len(args) == 2 else typing.Any  # type: ignore
 
 
 def is_optional_type(tp: type) -> bool:
@@ -278,7 +278,7 @@ def get_final_type(tp: type) -> type:
         raise ValueError('get_final_type() called with non-final type.')
 
     args = get_args(tp)
-    return args[0] if len(args) > 0 else typing.Any
+    return args[0] if len(args) > 0 else typing.Any  # type: ignore
 
 
 def is_type_variable(tp: type) -> bool:
