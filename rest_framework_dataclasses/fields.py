@@ -1,5 +1,5 @@
 import collections.abc
-from typing import Any, Dict, Generic, Type, TypeVar, Union, Optional
+from typing import Any, Dict, Generic, Mapping, Type, TypeVar, Union, Optional
 
 from django.core.exceptions import ImproperlyConfigured
 from rest_framework.exceptions import ValidationError
@@ -80,7 +80,7 @@ class UnionField(Field, Generic[T]):
     type_mapping: Dict[type, str]
 
     def __init__(self,
-                 child_fields: Dict[type, Union[Field, Type[Field]]],
+                 child_fields: Mapping[type, Union[Field, Type[Field]]],
                  *,
                  nest_value: bool = False,
                  discriminator_field_name: Optional[str] = None,
