@@ -1,3 +1,10 @@
+1.4.0, 14 May 2025
+------------------
+Features & fixes:
+
+* Support type aliases defined using the type statement (PEP 695).
+* Fix type hint for ``child_fields`` parameter of ``UnionField`` to accept ``Field`` subclasses.
+
 1.3.1, 12 September 2023
 ------------------------
 Features & fixes:
